@@ -1,0 +1,2124 @@
+<!DOCTYPE html>
+<html lang="ar" dir="rtl">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>منشئ الأسئلة الامتحانية الاحترافي</title>
+
+    <!-- خطوط جوجل العربية: Cairo للواجهة، و Amiri و Tajawal لخيارات ورقة الامتحان -->
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Amiri:ital,wght@0,400;0,700;1,400&family=Cairo:wght@400;500;600;700;800&family=Tajawal:wght@400;500;700;800&display=swap" rel="stylesheet">
+
+    <!-- مكتبة Tailwind CSS للتنسيق المتجاوب -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script>
+        tailwind.config = {
+            theme: {
+                extend: {
+                    fontFamily: {
+                        sans: ['Cairo', 'sans-serif'],
+                        amiri: ['Amiri', 'serif'],
+                        cairo: ['Cairo', 'sans-serif'],
+                        tajawal: ['Tajawal', 'sans-serif'],
+                    }
+                }
+            }
+        }
+    </script>
+
+    <!-- قواعد تنسيق ورقة الامتحان A4 وإعدادات الطباعة الدقيقة -->
+    <style>
+        /* تحسين شريط التمرير */
+        ::-webkit-scrollbar {
+            width: 7px;
+            height: 7px;
+        }
+        ::-webkit-scrollbar-track {
+            background: #f1f5f9;
+        }
+        ::-webkit-scrollbar-thumb {
+            background: #cbd5e1;
+            border-radius: 9999px;
+        }
+        ::-webkit-scrollbar-thumb:hover {
+            background: #94a3b8;
+        }
+
+        /* خلفية منطقة المعاينة */
+        .preview-bg {
+            background-color: #e2e8f0;
+            background-image: radial-gradient(#cbd5e1 1px, transparent 1px);
+            background-size: 18px 18px;
+        }
+
+        /* أبعاد ورقة A4 الحقيقية على الشاشة */
+        .exam-a4-sheet {
+            width: 210mm;
+            min-height: 297mm;
+            background: #ffffff;
+            color: #000000;
+            box-sizing: border-box;
+            display: flex;
+            flex-direction: column;
+            justify-content: space-between;
+            padding: 10mm;
+            position: relative;
+        }
+
+        /* الحاوية الداخلية للإطار الرسمي */
+        .exam-frame {
+            flex: 1;
+            display: flex;
+            flex-direction: column;
+            justify-content: space-between;
+            box-sizing: border-box;
+            width: 100%;
+        }
+
+        /* أنماط إطارات ورقة الامتحان */
+        .frame-double {
+            border: 4px double #0f172a;
+            padding: 6mm 7mm;
+            border-radius: 2px;
+        }
+        .frame-ornate {
+            border: 2.5px solid #0f172a;
+            outline: 1px solid #0f172a;
+            outline-offset: -5px;
+            padding: 7mm 8mm;
+        }
+        .frame-simple {
+            border: 1.5px solid #1e293b;
+            padding: 6mm 7mm;
+            border-radius: 4px;
+        }
+        .frame-none {
+            border: none;
+            padding: 2mm 3mm;
+        }
+
+        /* خطوط ورقة الامتحان القابلة للتبديل */
+        .paper-font-amiri { font-family: 'Amiri', serif; }
+        .paper-font-cairo { font-family: 'Cairo', sans-serif; }
+        .paper-font-tajawal { font-family: 'Tajawal', sans-serif; }
+
+        /* منع انقسام العناصر الفرعية بشكل مشوه عند الطباعة */
+        .avoid-break {
+            break-inside: avoid;
+            page-break-inside: avoid;
+        }
+
+        /* قواعد الطباعة وتصدير PDF بدقة A4 كاملة */
+        @media print {
+            @page {
+                size: A4 portrait;
+                margin: 8mm;
+            }
+
+            html, body {
+                width: 100%;
+                height: auto !important;
+                margin: 0 !important;
+                padding: 0 !important;
+                background: #ffffff !important;
+                overflow: visible !important;
+                -webkit-print-color-adjust: exact !important;
+                print-color-adjust: exact !important;
+            }
+
+            .no-print {
+                display: none !important;
+            }
+
+            #app-workspace {
+                display: block !important;
+                height: auto !important;
+                overflow: visible !important;
+                padding: 0 !important;
+                margin: 0 !important;
+            }
+
+            #preview-panel {
+                display: block !important;
+                width: 100% !important;
+                height: auto !important;
+                overflow: visible !important;
+                background: #ffffff !important;
+                padding: 0 !important;
+                margin: 0 !important;
+            }
+
+            #preview-scroll-area {
+                display: block !important;
+                overflow: visible !important;
+                padding: 0 !important;
+                margin: 0 !important;
+                height: auto !important;
+            }
+
+            #paper-scale-wrapper {
+                width: 100% !important;
+                height: auto !important;
+                transform: none !important;
+                margin: 0 !important;
+                padding: 0 !important;
+            }
+
+            .exam-a4-sheet {
+                width: 100% !important;
+                min-height: 277mm !important;
+                padding: 0 !important;
+                margin: 0 !important;
+                box-shadow: none !important;
+                border-radius: 0 !important;
+            }
+        }
+    </style>
+</head>
+<body class="bg-slate-100 text-slate-800 font-sans antialiased selection:bg-indigo-100 selection:text-indigo-900 overflow-x-hidden">
+
+    <!-- ==================== الشريط العلوي (يختفي عند الطباعة) ==================== -->
+    <header class="no-print sticky top-0 z-40 bg-white/95 backdrop-blur border-b border-slate-200 shadow-sm">
+        <div class="max-w-full mx-auto px-3 sm:px-5 py-2.5 flex flex-wrap items-center justify-between gap-2.5">
+            
+            <!-- الشعار واسم التطبيق وحالة الحفظ -->
+            <div class="flex items-center gap-2.5">
+                <div class="w-10 h-10 rounded-xl bg-gradient-to-br from-indigo-600 to-blue-700 text-white flex items-center justify-center shadow-md shadow-indigo-200 shrink-0">
+                    <!-- أيقونة ورقة امتحان SVG -->
+                    <svg class="w-6 h-6" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"></path>
+                    </svg>
+                </div>
+                <div>
+                    <h1 class="text-sm sm:text-base font-extrabold text-slate-900 leading-tight">منشئ الأسئلة الامتحانية</h1>
+                    <div class="flex items-center gap-2 text-xs text-slate-500">
+                        <span id="autosave-status" class="inline-flex items-center gap-1 text-emerald-600 font-medium">
+                            <span class="w-1.5 h-1.5 rounded-full bg-emerald-500"></span>
+                            محفوظ تلقائياً
+                        </span>
+                    </div>
+                </div>
+            </div>
+
+            <!-- مؤشر الدرجات الحي -->
+            <div id="grade-indicator-pill" class="flex items-center gap-2 px-3 py-1.5 rounded-xl border text-xs sm:text-sm font-bold transition-colors bg-emerald-50 border-emerald-200 text-emerald-700">
+                <span>المجموع:</span>
+                <span id="header-grade-text" dir="ltr">100 / 100</span>
+                <span id="header-grade-badge" class="hidden sm:inline-block px-2 py-0.5 rounded-lg text-xs bg-emerald-100 text-emerald-800">مكتمل</span>
+            </div>
+
+            <!-- أزرار الإجراءات السريعة -->
+            <div class="flex items-center gap-1.5 sm:gap-2 flex-wrap">
+                <button type="button" onclick="confirmLoadSample()" title="تحميل نموذج امتحاني تجريبي" class="px-2.5 py-2 rounded-xl text-xs font-bold bg-slate-100 hover:bg-slate-200 text-slate-700 transition flex items-center gap-1.5">
+                    <svg class="w-4 h-4 text-indigo-600" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M19.5 14.25v-2.625a3.375 3.375 0 00-3.375-3.375h-1.5A1.125 1.125 0 0113.5 7.125v-1.5a3.375 3.375 0 00-3.375-3.375H8.25m0 12.75h7.5m-7.5 3H12M10.5 2.25H5.625c-.621 0-1.125.504-1.125 1.125v17.25c0 .621.504 1.125 1.125 1.125h12.75c.621 0 1.125-.504 1.125-1.125V11.25a9 9 0 00-9-9z"/></svg>
+                    <span class="hidden md:inline">نموذج تجريبي</span>
+                </button>
+
+                <button type="button" onclick="exportJSON()" title="حفظ نسخة احتياطية JSON" class="px-2.5 py-2 rounded-xl text-xs font-bold bg-slate-100 hover:bg-slate-200 text-slate-700 transition flex items-center gap-1.5">
+                    <svg class="w-4 h-4 text-blue-600" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4"/></svg>
+                    <span class="hidden lg:inline">حفظ ملف</span>
+                </button>
+
+                <label title="استعادة نسخة احتياطية JSON" class="cursor-pointer px-2.5 py-2 rounded-xl text-xs font-bold bg-slate-100 hover:bg-slate-200 text-slate-700 transition flex items-center gap-1.5">
+                    <svg class="w-4 h-4 text-teal-600" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-8l-4-4m0 0L8 8m4-4v12"/></svg>
+                    <span class="hidden lg:inline">استعادة</span>
+                    <input type="file" id="import-json-input" accept=".json" class="hidden" onchange="importJSON(event)">
+                </label>
+
+                <button type="button" onclick="openGithubModal()" title="طريقة نشر التطبيق على GitHub Pages" class="px-2.5 py-2 rounded-xl text-xs font-bold bg-slate-100 hover:bg-slate-200 text-slate-700 transition flex items-center gap-1.5">
+                    <svg class="w-4 h-4 text-slate-800" fill="currentColor" viewBox="0 0 24 24"><path fill-rule="evenodd" clip-rule="evenodd" d="M12 2C6.477 2 2 6.484 2 12.017c0 4.425 2.865 8.18 6.839 9.504.5.092.682-.217.682-.483 0-.237-.008-.868-.013-1.703-2.782.605-3.369-1.343-3.369-1.343-.454-1.158-1.11-1.466-1.11-1.466-.908-.62.069-.608.069-.608 1.003.07 1.53 1.032 1.53 1.032.892 1.53 2.341 1.088 2.91.832.092-.647.35-1.088.636-1.338-2.22-.253-4.555-1.113-4.555-4.951 0-1.093.39-1.988 1.029-2.688-.103-.253-.446-1.272.098-2.65 0 0 .84-.27 2.75 1.026A9.564 9.564 0 0112 6.844c.85.004 1.705.115 2.504.337 1.909-1.296 2.747-1.027 2.747-1.027.546 1.379.202 2.398.1 2.651.64.7 1.028 1.595 1.028 2.688 0 3.848-2.339 4.695-4.566 4.943.359.309.678.92.678 1.855 0 1.338-.012 2.419-.012 2.747 0 .268.18.58.688.482A10.019 10.019 0 0022 12.017C22 6.484 17.522 2 12 2z"/></svg>
+                    <span class="hidden xl:inline">نشر GitHub</span>
+                </button>
+
+                <button type="button" onclick="confirmClearAll()" title="مسح جميع البيانات" class="px-2.5 py-2 rounded-xl text-xs font-bold bg-rose-50 hover:bg-rose-100 text-rose-700 transition flex items-center gap-1.5">
+                    <svg class="w-4 h-4" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16"/></svg>
+                    <span class="hidden md:inline">مسح الكل</span>
+                </button>
+
+                <button type="button" onclick="printExam()" class="px-3.5 sm:px-4 py-2 rounded-xl text-xs sm:text-sm font-bold bg-indigo-600 hover:bg-indigo-700 active:scale-95 text-white shadow-md shadow-indigo-200 transition flex items-center gap-1.5">
+                    <svg class="w-4 h-4" fill="none" stroke="currentColor" stroke-width="2.2" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M17 17h2a2 2 0 002-2v-4a2 2 0 00-2-2H5a2 2 0 00-2 2v4a2 2 0 002 2h2m2 4h6a2 2 0 002-2v-4a2 2 0 00-2-2H9a2 2 0 00-2 2v4a2 2 0 002 2zm8-12V5a2 2 0 00-2-2H9a2 2 0 00-2 2v4h10z"/></svg>
+                    <span>طباعة / PDF</span>
+                </button>
+            </div>
+        </div>
+
+        <!-- شريط التبديل للهواتف والشاشات المتوسطة (التحرير / معاينة الورقة) -->
+        <div class="lg:hidden grid grid-cols-2 border-t border-slate-200 bg-slate-50 p-1.5 gap-1.5">
+            <button type="button" id="mobile-tab-editor" onclick="switchMobileView('editor')" class="py-2.5 rounded-xl text-sm font-bold bg-indigo-600 text-white shadow-sm transition flex items-center justify-center gap-2">
+                <svg class="w-4 h-4" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z"/></svg>
+                التحرير والأسئلة
+            </button>
+            <button type="button" id="mobile-tab-preview" onclick="switchMobileView('preview')" class="py-2.5 rounded-xl text-sm font-bold bg-white text-slate-700 border border-slate-200 transition flex items-center justify-center gap-2">
+                <svg class="w-4 h-4" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z"/><path stroke-linecap="round" stroke-linejoin="round" d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z"/></svg>
+                معاينة ورقة A4
+            </button>
+        </div>
+    </header>
+
+    <!-- ==================== مساحة العمل المقسومة (تحرير يمين / معاينة يسار) ==================== -->
+    <main id="app-workspace" class="flex flex-col lg:flex-row lg:h-[calc(100vh-61px)] overflow-hidden">
+
+        <!-- ========== لوحة التحكم والتحرير (الجانب الأيمن) ========== -->
+        <section id="editor-panel" class="no-print w-full lg:w-[46%] xl:w-[44%] bg-slate-50 border-l border-slate-200 flex flex-col lg:h-full">
+            
+            <!-- تبويبات لوحة التحرير الداخلية -->
+            <div class="bg-white border-b border-slate-200 px-3 pt-2.5 pb-2 flex gap-1.5 sticky top-0 z-20">
+                <button type="button" id="etab-questions" onclick="switchEditorTab('questions')" class="flex-1 py-2 px-3 rounded-xl text-xs sm:text-sm font-bold bg-indigo-50 text-indigo-700 border border-indigo-200 transition flex items-center justify-center gap-1.5">
+                    <svg class="w-4 h-4" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M8.228 9c.549-1.165 2.03-2 3.772-2 2.21 0 4 1.343 4 3 0 1.4-1.278 2.575-3.006 2.907-.542.104-.994.54-.994 1.093m0 3h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"/></svg>
+                    الأسئلة (<span id="questions-count-badge">0</span>)
+                </button>
+                <button type="button" id="etab-header" onclick="switchEditorTab('header')" class="flex-1 py-2 px-3 rounded-xl text-xs sm:text-sm font-bold text-slate-600 hover:bg-slate-100 border border-transparent transition flex items-center justify-center gap-1.5">
+                    <svg class="w-4 h-4" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M4 5a1 1 0 011-1h14a1 1 0 011 1v2a1 1 0 01-1 1H5a1 1 0 01-1-1V5zM4 13a1 1 0 011-1h6a1 1 0 011 1v6a1 1 0 01-1 1H5a1 1 0 01-1-1v-6zM16 13a1 1 0 011-1h2a1 1 0 011 1v6a1 1 0 01-1 1h-2a1 1 0 01-1-1v-6z"/></svg>
+                    الكليشة والتذييل
+                </button>
+                <button type="button" id="etab-style" onclick="switchEditorTab('style')" class="flex-1 py-2 px-3 rounded-xl text-xs sm:text-sm font-bold text-slate-600 hover:bg-slate-100 border border-transparent transition flex items-center justify-center gap-1.5">
+                    <svg class="w-4 h-4" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M12 6V4m0 2a2 2 0 100 4m0-4a2 2 0 110 4m-6 8a2 2 0 100-4m0 4a2 2 0 110-4m0 4v2m0-6V4m6 6v10m6-2a2 2 0 100-4m0 4a2 2 0 110-4m0 4v2m0-6V4"/></svg>
+                    تنسيق الورقة
+                </button>
+            </div>
+
+            <!-- محتوى لوحة التحرير القابل للتمرير -->
+            <div class="flex-1 overflow-y-auto p-3.5 sm:p-4 space-y-4">
+
+                <!-- ===== التبويب 1: إدارة الأسئلة ===== -->
+                <div id="tab-content-questions" class="space-y-4">
+                    
+                    <!-- بطاقة ضبط الدرجة الكلية وشريط الرموز العلمية السريعة -->
+                    <div class="bg-white rounded-2xl border border-slate-200 p-3.5 shadow-sm space-y-3">
+                        <div class="flex flex-wrap items-center justify-between gap-3">
+                            <div class="flex items-center gap-2">
+                                <label for="target-grade-input" class="text-xs sm:text-sm font-bold text-slate-700">الدرجة الكلية المطلوبة:</label>
+                                <input type="number" id="target-grade-input" min="1" max="1000" class="w-20 px-2.5 py-1.5 rounded-xl border border-slate-300 text-center font-bold text-sm focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 outline-none" oninput="updateTargetGrade(this.value)">
+                            </div>
+                            <div id="editor-grade-status" class="text-xs font-bold px-3 py-1.5 rounded-xl bg-emerald-50 text-emerald-700 border border-emerald-200">
+                                مجموع الأسئلة: 100 / 100 (متطابق)
+                            </div>
+                        </div>
+
+                        <!-- شريط إدراج الرموز السريعة (علمية / فراغات / علامات) -->
+                        <div class="pt-2 border-t border-slate-100">
+                            <div class="text-[11px] font-semibold text-slate-500 mb-1.5 flex items-center justify-between">
+                                <span>إدراج رموز سريعة في الحقل النشط:</span>
+                                <span class="text-slate-400">اضغط على أي رمز للإدراج</span>
+                            </div>
+                            <div class="flex flex-wrap gap-1.5" id="quick-symbols-bar">
+                                <button type="button" onclick="insertSymbol(' ............. ')" class="px-2 py-1 rounded-lg bg-slate-100 hover:bg-indigo-100 hover:text-indigo-700 text-xs font-bold border border-slate-200 transition">فراغ (.....)</button>
+                                <button type="button" onclick="insertSymbol(' (     ) ')" class="px-2 py-1 rounded-lg bg-slate-100 hover:bg-indigo-100 hover:text-indigo-700 text-xs font-bold border border-slate-200 transition">(   )</button>
+                                <button type="button" onclick="insertSymbol('✓')" class="px-2.5 py-1 rounded-lg bg-slate-100 hover:bg-indigo-100 hover:text-indigo-700 text-xs font-bold border border-slate-200 transition">✓</button>
+                                <button type="button" onclick="insertSymbol('✗')" class="px-2.5 py-1 rounded-lg bg-slate-100 hover:bg-indigo-100 hover:text-indigo-700 text-xs font-bold border border-slate-200 transition">✗</button>
+                                <button type="button" onclick="insertSymbol('×')" class="px-2.5 py-1 rounded-lg bg-slate-100 hover:bg-indigo-100 hover:text-indigo-700 text-xs font-bold border border-slate-200 transition">×</button>
+                                <button type="button" onclick="insertSymbol('÷')" class="px-2.5 py-1 rounded-lg bg-slate-100 hover:bg-indigo-100 hover:text-indigo-700 text-xs font-bold border border-slate-200 transition">÷</button>
+                                <button type="button" onclick="insertSymbol('±')" class="px-2.5 py-1 rounded-lg bg-slate-100 hover:bg-indigo-100 hover:text-indigo-700 text-xs font-bold border border-slate-200 transition">±</button>
+                                <button type="button" onclick="insertSymbol('√')" class="px-2.5 py-1 rounded-lg bg-slate-100 hover:bg-indigo-100 hover:text-indigo-700 text-xs font-bold border border-slate-200 transition">√</button>
+                                <button type="button" onclick="insertSymbol('²')" class="px-2.5 py-1 rounded-lg bg-slate-100 hover:bg-indigo-100 hover:text-indigo-700 text-xs font-bold border border-slate-200 transition">²</button>
+                                <button type="button" onclick="insertSymbol('³')" class="px-2.5 py-1 rounded-lg bg-slate-100 hover:bg-indigo-100 hover:text-indigo-700 text-xs font-bold border border-slate-200 transition">³</button>
+                                <button type="button" onclick="insertSymbol('°')" class="px-2.5 py-1 rounded-lg bg-slate-100 hover:bg-indigo-100 hover:text-indigo-700 text-xs font-bold border border-slate-200 transition">°</button>
+                                <button type="button" onclick="insertSymbol('π')" class="px-2.5 py-1 rounded-lg bg-slate-100 hover:bg-indigo-100 hover:text-indigo-700 text-xs font-bold border border-slate-200 transition">π</button>
+                                <button type="button" onclick="insertSymbol('→')" class="px-2.5 py-1 rounded-lg bg-slate-100 hover:bg-indigo-100 hover:text-indigo-700 text-xs font-bold border border-slate-200 transition">→</button>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- قائمة بطاقات الأسئلة -->
+                    <div id="questions-editor-list" class="space-y-3.5">
+                        <!-- يتم توليد بطاقات الأسئلة برمجياً هنا -->
+                    </div>
+
+                    <!-- أزرار إضافة سؤال جديد حسب النوع -->
+                    <div class="bg-white rounded-2xl border-2 border-dashed border-indigo-200 p-4 space-y-2.5">
+                        <div class="text-xs font-bold text-indigo-800 text-center">إضافة سؤال جديد إلى الورقة</div>
+                        <div class="grid grid-cols-2 gap-2">
+                            <button type="button" onclick="addQuestion('essay')" class="py-2.5 px-3 rounded-xl bg-indigo-50 hover:bg-indigo-100 text-indigo-800 font-bold text-xs sm:text-sm transition flex items-center justify-center gap-1.5 border border-indigo-100">
+                                <span>+</span> سؤال نصي / مقالي
+                            </button>
+                            <button type="button" onclick="addQuestion('branches')" class="py-2.5 px-3 rounded-xl bg-emerald-50 hover:bg-emerald-100 text-emerald-800 font-bold text-xs sm:text-sm transition flex items-center justify-center gap-1.5 border border-emerald-100">
+                                <span>+</span> سؤال بفروع (أ، ب، ج)
+                            </button>
+                            <button type="button" onclick="addQuestion('mcq')" class="py-2.5 px-3 rounded-xl bg-amber-50 hover:bg-amber-100 text-amber-800 font-bold text-xs sm:text-sm transition flex items-center justify-center gap-1.5 border border-amber-100">
+                                <span>+</span> اختيار من متعدد
+                            </button>
+                            <button type="button" onclick="addQuestion('list')" class="py-2.5 px-3 rounded-xl bg-sky-50 hover:bg-sky-100 text-sky-800 font-bold text-xs sm:text-sm transition flex items-center justify-center gap-1.5 border border-sky-100">
+                                <span>+</span> صح وخطأ / فراغات
+                            </button>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- ===== التبويب 2: الكليشة الرسمية والتذييل ===== -->
+                <div id="tab-content-header" class="hidden space-y-4">
+                    
+                    <!-- الطرف الأيمن للترويسة -->
+                    <div class="bg-white rounded-2xl border border-slate-200 p-4 shadow-sm space-y-3">
+                        <h2 class="text-sm font-extrabold text-slate-800 flex items-center gap-2 border-b border-slate-100 pb-2">
+                            <span class="w-2 h-2 rounded-full bg-indigo-600"></span>
+                            الطرف الأيمن للكليشة (الجهة الرسمية)
+                        </h2>
+                        <div class="space-y-2.5">
+                            <div>
+                                <label class="block text-xs font-bold text-slate-600 mb-1">اسم الوزارة / الدولة / الجامعة</label>
+                                <input type="text" id="h-right1" class="w-full px-3 py-2 rounded-xl border border-slate-300 text-sm focus:ring-2 focus:ring-indigo-500 outline-none" placeholder="مثال: جمهورية العراق - وزارة التربية" oninput="updateHeaderField('right1', this.value)">
+                            </div>
+                            <div>
+                                <label class="block text-xs font-bold text-slate-600 mb-1">المديرية / الكلية</label>
+                                <input type="text" id="h-right2" class="w-full px-3 py-2 rounded-xl border border-slate-300 text-sm focus:ring-2 focus:ring-indigo-500 outline-none" placeholder="مثال: المديرية العامة لتربية نينوى" oninput="updateHeaderField('right2', this.value)">
+                            </div>
+                            <div>
+                                <label class="block text-xs font-bold text-slate-600 mb-1">اسم المدرسة / القسم</label>
+                                <input type="text" id="h-right3" class="w-full px-3 py-2 rounded-xl border border-slate-300 text-sm focus:ring-2 focus:ring-indigo-500 outline-none" placeholder="مثال: ثانوية المتميزين" oninput="updateHeaderField('right3', this.value)">
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- المنتصف: الشعار وعنوان الامتحان -->
+                    <div class="bg-white rounded-2xl border border-slate-200 p-4 shadow-sm space-y-3">
+                        <h2 class="text-sm font-extrabold text-slate-800 flex items-center gap-2 border-b border-slate-100 pb-2">
+                            <span class="w-2 h-2 rounded-full bg-blue-600"></span>
+                            المنتصف (الشعار وعنوان الامتحان)
+                        </h2>
+                        <div class="grid grid-cols-1 sm:grid-cols-2 gap-2.5">
+                            <div>
+                                <label class="block text-xs font-bold text-slate-600 mb-1">عنوان الامتحان</label>
+                                <input type="text" id="h-title" class="w-full px-3 py-2 rounded-xl border border-slate-300 text-sm focus:ring-2 focus:ring-indigo-500 outline-none" placeholder="أسئلة امتحان نصف السنة" oninput="updateHeaderField('title', this.value)">
+                            </div>
+                            <div>
+                                <label class="block text-xs font-bold text-slate-600 mb-1">العام الدراسي / الدور</label>
+                                <input type="text" id="h-subtitle" class="w-full px-3 py-2 rounded-xl border border-slate-300 text-sm focus:ring-2 focus:ring-indigo-500 outline-none" placeholder="للعام الدراسي 2026 - 2027" oninput="updateHeaderField('subtitle', this.value)">
+                            </div>
+                        </div>
+
+                        <!-- التحكم بالشعار -->
+                        <div class="p-3 rounded-xl bg-slate-50 border border-slate-200 space-y-2.5">
+                            <div class="flex flex-wrap items-center justify-between gap-2">
+                                <span class="text-xs font-bold text-slate-700">شعار الوزارة / المدرسة / الجامعة</span>
+                                <div class="flex items-center gap-2">
+                                    <label class="cursor-pointer px-3 py-1.5 rounded-xl bg-indigo-600 hover:bg-indigo-700 text-white text-xs font-bold transition">
+                                        رفع شعار
+                                        <input type="file" accept="image/*" class="hidden" onchange="handleLogoUpload(event)">
+                                    </label>
+                                    <button type="button" id="btn-remove-logo" onclick="removeLogo()" class="hidden px-2.5 py-1.5 rounded-xl bg-rose-100 hover:bg-rose-200 text-rose-700 text-xs font-bold transition">حذف</button>
+                                </div>
+                            </div>
+                            <div id="logo-controls" class="hidden space-y-2 pt-1">
+                                <div class="flex items-center justify-between gap-3">
+                                    <label class="text-xs text-slate-600 font-semibold">حجم الشعار (<span id="logo-size-val">56</span>px)</label>
+                                    <input type="range" id="h-logoSize" min="32" max="110" class="flex-1 accent-indigo-600" oninput="updateHeaderField('logoSize', Number(this.value)); document.getElementById('logo-size-val').textContent=this.value;">
+                                </div>
+                                <label class="inline-flex items-center gap-2 text-xs font-semibold text-slate-700 cursor-pointer">
+                                    <input type="checkbox" id="h-showLogo" class="rounded accent-indigo-600 w-4 h-4" onchange="updateHeaderField('showLogo', this.checked)">
+                                    إظهار الشعار في الورقة
+                                </label>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- الطرف الأيسر للترويسة -->
+                    <div class="bg-white rounded-2xl border border-slate-200 p-4 shadow-sm space-y-3">
+                        <h2 class="text-sm font-extrabold text-slate-800 flex items-center gap-2 border-b border-slate-100 pb-2">
+                            <span class="w-2 h-2 rounded-full bg-emerald-600"></span>
+                            الطرف الأيسر للكليشة (معلومات المادة)
+                        </h2>
+                        <div class="grid grid-cols-1 sm:grid-cols-2 gap-2.5">
+                            <div>
+                                <label class="block text-xs font-bold text-slate-600 mb-1">المادة</label>
+                                <input type="text" id="h-subject" class="w-full px-3 py-2 rounded-xl border border-slate-300 text-sm focus:ring-2 focus:ring-indigo-500 outline-none" placeholder="مثال: الفيزياء" oninput="updateHeaderField('subject', this.value)">
+                            </div>
+                            <div>
+                                <label class="block text-xs font-bold text-slate-600 mb-1">الصف / المرحلة</label>
+                                <input type="text" id="h-grade" class="w-full px-3 py-2 rounded-xl border border-slate-300 text-sm focus:ring-2 focus:ring-indigo-500 outline-none" placeholder="مثال: الثالث المتوسط" oninput="updateHeaderField('grade', this.value)">
+                            </div>
+                            <div>
+                                <label class="block text-xs font-bold text-slate-600 mb-1">الوقت</label>
+                                <input type="text" id="h-time" class="w-full px-3 py-2 rounded-xl border border-slate-300 text-sm focus:ring-2 focus:ring-indigo-500 outline-none" placeholder="مثال: ساعتان" oninput="updateHeaderField('time', this.value)">
+                            </div>
+                            <div>
+                                <label class="block text-xs font-bold text-slate-600 mb-1">التاريخ</label>
+                                <input type="text" id="h-date" class="w-full px-3 py-2 rounded-xl border border-slate-300 text-sm focus:ring-2 focus:ring-indigo-500 outline-none" placeholder="2026 / 11 / 25" oninput="updateHeaderField('date', this.value)">
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- شريط الملاحظات العامة وتذييل الورقة -->
+                    <div class="bg-white rounded-2xl border border-slate-200 p-4 shadow-sm space-y-3">
+                        <h2 class="text-sm font-extrabold text-slate-800 flex items-center gap-2 border-b border-slate-100 pb-2">
+                            <span class="w-2 h-2 rounded-full bg-amber-500"></span>
+                            الملاحظات العامة وتذييل الورقة
+                        </h2>
+                        <div class="space-y-2.5">
+                            <div>
+                                <label class="block text-xs font-bold text-slate-600 mb-1">شريط الملاحظات تحت الترويسة</label>
+                                <input type="text" id="h-note" class="w-full px-3 py-2 rounded-xl border border-slate-300 text-sm focus:ring-2 focus:ring-indigo-500 outline-none" placeholder="ملاحظة: أجب عن جميع الأسئلة" oninput="updateHeaderField('note', this.value)">
+                            </div>
+                            <div class="grid grid-cols-1 sm:grid-cols-2 gap-2.5">
+                                <div>
+                                    <label class="block text-xs font-bold text-slate-600 mb-1">اسم مدرس / أستاذ المادة</label>
+                                    <input type="text" id="f-teacher" class="w-full px-3 py-2 rounded-xl border border-slate-300 text-sm focus:ring-2 focus:ring-indigo-500 outline-none" placeholder="مدرس المادة: ..." oninput="updateFooterField('teacher', this.value)">
+                                </div>
+                                <div>
+                                    <label class="block text-xs font-bold text-slate-600 mb-1">العبارة الختامية</label>
+                                    <input type="text" id="f-closing" class="w-full px-3 py-2 rounded-xl border border-slate-300 text-sm focus:ring-2 focus:ring-indigo-500 outline-none" placeholder="مع تمنياتنا لكم بالنجاح والتوفيق" oninput="updateFooterField('closing', this.value)">
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- ===== التبويب 3: تنسيق ورقة الامتحان ===== -->
+                <div id="tab-content-style" class="hidden space-y-4">
+                    <div class="bg-white rounded-2xl border border-slate-200 p-4 shadow-sm space-y-4">
+                        <h2 class="text-sm font-extrabold text-slate-800 border-b border-slate-100 pb-2">خط الورقة والمظهر</h2>
+
+                        <!-- اختيار خط ورقة الامتحان -->
+                        <div>
+                            <label class="block text-xs font-bold text-slate-600 mb-2">نوع خط ورقة الامتحان</label>
+                            <div class="grid grid-cols-3 gap-2">
+                                <button type="button" data-font="amiri" onclick="updateStyleField('fontFamily', 'amiri')" class="style-font-btn p-2.5 rounded-xl border text-center transition">
+                                    <div class="font-amiri text-base font-bold">أميري</div>
+                                    <div class="text-[11px] text-slate-500">تقليدي رسمي</div>
+                                </button>
+                                <button type="button" data-font="cairo" onclick="updateStyleField('fontFamily', 'cairo')" class="style-font-btn p-2.5 rounded-xl border text-center transition">
+                                    <div class="font-cairo text-sm font-bold">القاهرة</div>
+                                    <div class="text-[11px] text-slate-500">عصري واضح</div>
+                                </button>
+                                <button type="button" data-font="tajawal" onclick="updateStyleField('fontFamily', 'tajawal')" class="style-font-btn p-2.5 rounded-xl border text-center transition">
+                                    <div class="font-tajawal text-sm font-bold">تجوال</div>
+                                    <div class="text-[11px] text-slate-500">ناعم ومرتب</div>
+                                </button>
+                            </div>
+                        </div>
+
+                        <!-- اختيار شكل إطار الورقة -->
+                        <div>
+                            <label class="block text-xs font-bold text-slate-600 mb-2">إطار ورقة الامتحان</label>
+                            <div class="grid grid-cols-2 gap-2">
+                                <button type="button" data-border="double" onclick="updateStyleField('borderStyle', 'double')" class="style-border-btn p-2.5 rounded-xl border text-xs font-bold transition">إطار مزدوج رسمي</button>
+                                <button type="button" data-border="ornate" onclick="updateStyleField('borderStyle', 'ornate')" class="style-border-btn p-2.5 rounded-xl border text-xs font-bold transition">إطار كلاسيكي مزدوج</button>
+                                <button type="button" data-border="simple" onclick="updateStyleField('borderStyle', 'simple')" class="style-border-btn p-2.5 rounded-xl border text-xs font-bold transition">إطار بسيط</button>
+                                <button type="button" data-border="none" onclick="updateStyleField('borderStyle', 'none')" class="style-border-btn p-2.5 rounded-xl border text-xs font-bold transition">بدون إطار</button>
+                            </div>
+                        </div>
+
+                        <!-- حجم الخط وتباعد الأسطر -->
+                        <div class="space-y-3 pt-1">
+                            <div>
+                                <div class="flex justify-between text-xs font-bold text-slate-700 mb-1">
+                                    <span>حجم خط الأسئلة</span>
+                                    <span id="style-fontSize-val">16px</span>
+                                </div>
+                                <input type="range" id="s-fontSize" min="12" max="22" step="0.5" class="w-full accent-indigo-600" oninput="updateStyleField('fontSize', Number(this.value))">
+                            </div>
+
+                            <div>
+                                <div class="flex justify-between text-xs font-bold text-slate-700 mb-1">
+                                    <span>تباعد الأسطر</span>
+                                    <span id="style-lineHeight-val">1.7</span>
+                                </div>
+                                <input type="range" id="s-lineHeight" min="1.3" max="2.3" step="0.05" class="w-full accent-indigo-600" oninput="updateStyleField('lineHeight', Number(this.value))">
+                            </div>
+
+                            <div>
+                                <div class="flex justify-between text-xs font-bold text-slate-700 mb-1">
+                                    <span>المسافة بين الأسئلة</span>
+                                    <span id="style-questionGap-val">16px</span>
+                                </div>
+                                <input type="range" id="s-questionGap" min="8" max="32" step="2" class="w-full accent-indigo-600" oninput="updateStyleField('questionGap', Number(this.value))">
+                            </div>
+                        </div>
+
+                        <!-- خيارات إضافية للتنسيق -->
+                        <div class="pt-3 border-t border-slate-100 space-y-2.5">
+                            <label class="flex items-center justify-between p-2.5 rounded-xl bg-slate-50 border border-slate-200 cursor-pointer">
+                                <span class="text-xs font-bold text-slate-700">استخدام الأرقام الهندية العربية (١، ٢، ٣) في الورقة</span>
+                                <input type="checkbox" id="s-arabicDigits" class="w-4 h-4 accent-indigo-600 rounded" onchange="updateStyleField('arabicDigits', this.checked)">
+                            </label>
+
+                            <label class="flex items-center justify-between p-2.5 rounded-xl bg-slate-50 border border-slate-200 cursor-pointer">
+                                <span class="text-xs font-bold text-slate-700">إظهار الدرجات بجانب كل سؤال</span>
+                                <input type="checkbox" id="s-showMarks" class="w-4 h-4 accent-indigo-600 rounded" onchange="updateStyleField('showMarks', this.checked)">
+                            </label>
+
+                            <label class="flex items-center justify-between p-2.5 rounded-xl bg-slate-50 border border-slate-200 cursor-pointer">
+                                <span class="text-xs font-bold text-slate-700">تظليل خفيف لشريط الملاحظات العامة</span>
+                                <input type="checkbox" id="s-shadeNote" class="w-4 h-4 accent-indigo-600 rounded" onchange="updateStyleField('shadeNote', this.checked)">
+                            </label>
+                        </div>
+                    </div>
+                </div>
+
+            </div>
+        </section>
+
+        <!-- ========== لوحة المعاينة الحية لورقة A4 (الجانب الأيسر) ========== -->
+        <section id="preview-panel" class="hidden lg:flex flex-1 flex-col preview-bg lg:h-full overflow-hidden">
+            
+            <!-- شريط أدوات التكبير والتصغير للمعاينة -->
+            <div class="no-print bg-white/90 backdrop-blur border-b border-slate-200 px-4 py-2 flex items-center justify-between gap-2 text-xs">
+                <div class="flex items-center gap-2 text-slate-600 font-bold">
+                    <span class="w-2 h-2 rounded-full bg-emerald-500 animate-pulse"></span>
+                    <span>معاينة حية بمقاس A4</span>
+                </div>
+                <div class="flex items-center gap-1.5">
+                    <button type="button" onclick="adjustZoom(-0.1)" class="w-7 h-7 rounded-lg bg-slate-100 hover:bg-slate-200 font-bold text-slate-700 flex items-center justify-center" title="تصغير">−</button>
+                    <span id="zoom-percent-label" class="min-w-[46px] text-center font-bold text-slate-700">تلقائي</span>
+                    <button type="button" onclick="adjustZoom(0.1)" class="w-7 h-7 rounded-lg bg-slate-100 hover:bg-slate-200 font-bold text-slate-700 flex items-center justify-center" title="تكبير">+</button>
+                    <button type="button" onclick="resetZoomAuto()" class="px-2.5 py-1 rounded-lg bg-indigo-50 hover:bg-indigo-100 text-indigo-700 font-bold transition">ملاءمة</button>
+                </div>
+            </div>
+
+            <!-- منطقة عرض ورقة A4 -->
+            <div id="preview-scroll-area" class="flex-1 overflow-auto p-4 sm:p-6 flex justify-center items-start">
+                <div id="paper-scale-wrapper" style="transform-origin: top center; transition: transform 0.15s ease;">
+                    <!-- ورقة الامتحان الفعلية A4 -->
+                    <article id="exam-paper" class="exam-a4-sheet shadow-2xl rounded-sm paper-font-amiri">
+                        <!-- يتم توليد محتوى الورقة هنا حياً -->
+                    </article>
+                </div>
+            </div>
+        </section>
+
+    </main>
+
+    <!-- ==================== نافذة التأكيد المخصصة (بديل confirm) ==================== -->
+    <div id="confirm-modal" class="no-print fixed inset-0 z-50 hidden items-center justify-center bg-slate-900/50 backdrop-blur-sm p-4">
+        <div class="bg-white rounded-2xl max-w-sm w-full p-5 shadow-2xl border border-slate-200 space-y-4">
+            <div class="flex items-start gap-3">
+                <div class="w-10 h-10 rounded-xl bg-amber-100 text-amber-600 flex items-center justify-center shrink-0">
+                    <svg class="w-6 h-6" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z"/></svg>
+                </div>
+                <div>
+                    <h3 id="confirm-modal-title" class="text-base font-extrabold text-slate-900">تأكيد الإجراء</h3>
+                    <p id="confirm-modal-message" class="text-sm text-slate-600 mt-1">هل أنت متأكد من المتابعة؟</p>
+                </div>
+            </div>
+            <div class="flex justify-end gap-2 pt-2">
+                <button type="button" onclick="closeConfirmModal()" class="px-4 py-2 rounded-xl text-sm font-bold bg-slate-100 hover:bg-slate-200 text-slate-700 transition">إلغاء</button>
+                <button type="button" id="confirm-modal-ok" class="px-4 py-2 rounded-xl text-sm font-bold bg-indigo-600 hover:bg-indigo-700 text-white transition">تأكيد</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- ==================== نافذة دليل النشر على GitHub Pages ==================== -->
+    <div id="github-modal" class="no-print fixed inset-0 z-50 hidden items-center justify-center bg-slate-900/50 backdrop-blur-sm p-4">
+        <div class="bg-white rounded-2xl max-w-lg w-full p-5 sm:p-6 shadow-2xl border border-slate-200 space-y-4 max-h-[90vh] overflow-y-auto">
+            <div class="flex items-center justify-between border-b border-slate-100 pb-3">
+                <h3 class="text-base sm:text-lg font-extrabold text-slate-900 flex items-center gap-2">
+                    <svg class="w-5 h-5" fill="currentColor" viewBox="0 0 24 24"><path fill-rule="evenodd" clip-rule="evenodd" d="M12 2C6.477 2 2 6.484 2 12.017c0 4.425 2.865 8.18 6.839 9.504.5.092.682-.217.682-.483 0-.237-.008-.868-.013-1.703-2.782.605-3.369-1.343-3.369-1.343-.454-1.158-1.11-1.466-1.11-1.466-.908-.62.069-.608.069-.608 1.003.07 1.53 1.032 1.53 1.032.892 1.53 2.341 1.088 2.91.832.092-.647.35-1.088.636-1.338-2.22-.253-4.555-1.113-4.555-4.951 0-1.093.39-1.988 1.029-2.688-.103-.253-.446-1.272.098-2.65 0 0 .84-.27 2.75 1.026A9.564 9.564 0 0112 6.844c.85.004 1.705.115 2.504.337 1.909-1.296 2.747-1.027 2.747-1.027.546 1.379.202 2.398.1 2.651.64.7 1.028 1.595 1.028 2.688 0 3.848-2.339 4.695-4.566 4.943.359.309.678.92.678 1.855 0 1.338-.012 2.419-.012 2.747 0 .268.18.58.688.482A10.019 10.019 0 0022 12.017C22 6.484 17.522 2 12 2z"/></svg>
+                    طريقة رفع التطبيق مجاناً على GitHub Pages
+                </h3>
+                <button type="button" onclick="closeGithubModal()" class="w-8 h-8 rounded-lg hover:bg-slate-100 text-slate-500 font-bold">✕</button>
+            </div>
+            <ol class="space-y-3 text-sm text-slate-700 list-decimal list-inside leading-relaxed">
+                <li>سجّل الدخول إلى حسابك في موقع <strong>github.com</strong> ثم اضغط على زر <strong>New</strong> لإنشاء مستودع جديد (Repository) باسم مثل <code class="bg-slate-100 px-1.5 py-0.5 rounded font-mono text-xs text-indigo-700">exam-maker</code> واجعله عاماً (<strong>Public</strong>).</li>
+                <li>داخل المستودع، اضغط على <strong>Add file</strong> ثم <strong>Create new file</strong> (أو <strong>Upload files</strong>).</li>
+                <li>سمِّ الملف <code class="bg-slate-100 px-1.5 py-0.5 rounded font-mono text-xs text-indigo-700">index.html</code> والصق فيه كود هذا التطبيق بالكامل، ثم اضغط <strong>Commit changes</strong>.</li>
+                <li>اذهب إلى تبويب <strong>Settings</strong> ثم من القائمة الجانبية اختر <strong>Pages</strong>.</li>
+                <li>تحت خيار <strong>Branch</strong> اختر <strong>main</strong> ثم اضغط <strong>Save</strong>.</li>
+                <li>بعد دقيقة واحدة سيظهر لك رابط تطبيقك المباشر (مثل <code class="bg-slate-100 px-1.5 py-0.5 rounded font-mono text-xs">username.github.io/exam-maker</code>) ويمكنك فتحه من الهاتف أو الحاسوب ومشاركته مع الزملاء!</li>
+            </ol>
+            <div class="flex justify-end pt-2">
+                <button type="button" onclick="closeGithubModal()" class="px-5 py-2 rounded-xl bg-indigo-600 hover:bg-indigo-700 text-white text-sm font-bold transition">فهمت، شكراً</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- ==================== حاوية الإشعارات السريعة (Toast) ==================== -->
+    <div id="toast-container" class="no-print fixed bottom-4 left-4 z-50 flex flex-col gap-2 pointer-events-none"></div>
+
+    <!-- ==================== منطق التطبيق بالكامل (JavaScript) ==================== -->
+    <script>
+        // =========================================================================
+        // 1. الثوابت والحالة الابتدائية للتطبيق
+        // =========================================================================
+        const STORAGE_KEY = 'arabic_exam_maker_state_v1';
+        const BRANCH_LETTERS = ['أ', 'ب', 'ج', 'د', 'هـ', 'و', 'ز', 'ح', 'ط', 'ي'];
+        const MCQ_LETTERS = ['أ', 'ب', 'ج', 'د', 'هـ'];
+
+        let examState = null;
+        let activeEditorTab = 'questions';
+        let activeMobileView = 'editor';
+        let manualZoom = null; // null تعني ملاءمة تلقائية
+        let lastFocusedInput = null;
+        let confirmCallback = null;
+        let collapsedQuestions = new Set(); // لتتبع الأسئلة المطوية في المحرر
+
+        /**
+         * توليد معرف فريد بسيط لكل سؤال أو فرع
+         */
+        function uid() {
+            return 'id_' + Date.now().toString(36) + '_' + Math.random().toString(36).slice(2, 7);
+        }
+
+        /**
+         * إرجاع نموذج امتحاني تجريبي واقعي ومكتمل الدرجات (100 درجة)
+         */
+        function getSampleExamState() {
+            return {
+                targetGrade: 100,
+                header: {
+                    right1: 'جمهورية العراق - وزارة التربية',
+                    right2: 'المديرية العامة لتربية نينوى',
+                    right3: 'ثانوية المتميزين للبنين',
+                    title: 'أسئلة امتحان نصف السنة',
+                    subtitle: 'للعام الدراسي 2026 - 2027',
+                    logoDataUrl: '',
+                    logoSize: 58,
+                    showLogo: true,
+                    subject: 'الفيزياء',
+                    grade: 'الثالث المتوسط',
+                    time: 'ساعتان',
+                    date: '2026 / 11 / 25',
+                    note: 'ملاحظة: أجب عن جميع الأسئلة (الترك ضمني في السؤال الأول).'
+                },
+                footer: {
+                    teacher: 'مدرس المادة: أ. علي محمد',
+                    closing: 'مع تمنياتنا لكم بالنجاح والتوفيق'
+                },
+                style: {
+                    fontFamily: 'amiri',
+                    borderStyle: 'double',
+                    fontSize: 16,
+                    lineHeight: 1.7,
+                    questionGap: 14,
+                    arabicDigits: false,
+                    showMarks: true,
+                    shadeNote: true
+                },
+                questions: [
+                    {
+                        id: uid(),
+                        type: 'branches',
+                        text: 'أجب عن فرعين فقط مما يأتي:',
+                        note: 'لكل فرع (10 درجات)',
+                        marks: 20,
+                        autoSumBranches: false,
+                        image: null,
+                        imageWidth: 45,
+                        imageAlign: 'center',
+                        branches: [
+                            { id: uid(), text: 'عرّف الكشاف الكهربائي، ثم اذكر الفائدة العملية منه مع بيان أجزائه الرئيسية.', marks: 10 },
+                            { id: uid(), text: 'وضّح بنشاط عملي كيفية شحن كشاف كهربائي متعادل بطريقة التماس (التوصيل).', marks: 10 },
+                            { id: uid(), text: 'قارن بين ربط المقاومات على التوالي وربطها على التوازي من حيث: (التيار، فرق الجهد، المقاومة المكافئة).', marks: 10 }
+                        ]
+                    },
+                    {
+                        id: uid(),
+                        type: 'mcq',
+                        text: 'اختر الإجابة الصحيحة لكل مما يأتي:',
+                        note: '',
+                        marks: 20,
+                        mcqLayout: '2cols',
+                        image: null,
+                        imageWidth: 45,
+                        imageAlign: 'center',
+                        mcqItems: [
+                            {
+                                id: uid(),
+                                prompt: 'وحدة قياس المقاومة الكهربائية في النظام الدولي للوحدات هي:',
+                                options: ['الأمبير', 'الفولت', 'الأوم', 'الواط']
+                            },
+                            {
+                                id: uid(),
+                                prompt: 'عند تقريب جسم مشحون بشحنة موجبة من قرص كشاف كهربائي متعادل، تنفرج ورقتاه بسبب شحنهما بشحنة:',
+                                options: ['موجبة', 'سالبة', 'متعادلة', 'مختلفة']
+                            }
+                        ]
+                    },
+                    {
+                        id: uid(),
+                        type: 'essay',
+                        text: 'ربطت ثلاث مقاومات (R₁ = 6Ω , R₂ = 9Ω , R₃ = 18Ω) على التوازي مع مصدر لفرق الجهد الكهربائي مقداره (18V). احسب:\n1- مقدار المقاومة المكافئة للمجموعة.\n2- التيار المنساب في كل مقاومة، والتيار الكلي للدائرة.',
+                        note: '',
+                        marks: 20,
+                        image: null,
+                        imageWidth: 45,
+                        imageAlign: 'center'
+                    },
+                    {
+                        id: uid(),
+                        type: 'branches',
+                        text: 'أجب عما يأتي:',
+                        note: '',
+                        marks: 20,
+                        autoSumBranches: true,
+                        image: null,
+                        imageWidth: 45,
+                        imageAlign: 'center',
+                        branches: [
+                            { id: uid(), text: 'علّل: تجهّز سيارات نقل الوقود بسلاسل معدنية في مؤخرتها تلامس الأرض.', marks: 10 },
+                            { id: uid(), text: 'ما العوامل التي يتوقف عليها مقدار مقاومة الموصل؟ عدّدها فقط.', marks: 10 }
+                        ]
+                    },
+                    {
+                        id: uid(),
+                        type: 'list',
+                        text: 'املأ الفراغات الآتية بما يناسبها:',
+                        note: '',
+                        marks: 20,
+                        image: null,
+                        imageWidth: 45,
+                        imageAlign: 'center',
+                        listItems: [
+                            { id: uid(), text: 'الشحنات الكهربائية المتشابهة ............. مع بعضها، والمختلفة ............. مع بعضها.' },
+                            { id: uid(), text: 'يستعمل جهاز ............. لقياس مقدار التيار الكهربائي، ويربط في الدائرة على ............. .' },
+                            { id: uid(), text: 'تسمى المواد التي تتحرك فيها الإلكترونات بحرية تامة بـ ............. .' },
+                            { id: uid(), text: 'تُقاس القوة الدافعة الكهربائية (emf) بوحدة ............. .' }
+                        ]
+                    }
+                ]
+            };
+        }
+
+        /**
+         * إرجاع حالة فارغة تماماً عند الضغط على مسح الكل
+         */
+        function getEmptyExamState() {
+            return {
+                targetGrade: 100,
+                header: {
+                    right1: 'جمهورية العراق - وزارة التربية',
+                    right2: '',
+                    right3: '',
+                    title: 'أسئلة امتحان',
+                    subtitle: '',
+                    logoDataUrl: '',
+                    logoSize: 56,
+                    showLogo: true,
+                    subject: '',
+                    grade: '',
+                    time: '',
+                    date: '',
+                    note: 'ملاحظة: أجب عن جميع الأسئلة.'
+                },
+                footer: {
+                    teacher: '',
+                    closing: 'مع تمنياتنا لكم بالنجاح والتوفيق'
+                },
+                style: {
+                    fontFamily: 'amiri',
+                    borderStyle: 'double',
+                    fontSize: 16,
+                    lineHeight: 1.7,
+                    questionGap: 14,
+                    arabicDigits: false,
+                    showMarks: true,
+                    shadeNote: true
+                },
+                questions: [
+                    {
+                        id: uid(),
+                        type: 'essay',
+                        text: '',
+                        note: '',
+                        marks: 20,
+                        image: null,
+                        imageWidth: 45,
+                        imageAlign: 'center'
+                    }
+                ]
+            };
+        }
+
+        // =========================================================================
+        // 2. دوال مساعدة (الأرقام، الحماية من XSS، الإشعارات، الحفظ)
+        // =========================================================================
+
+        /**
+         * تحويل الأرقام الإنجليزية إلى أرقام هندية عربية عند تفعيل الخيار
+         */
+        function fmtNum(val) {
+            const str = String(val ?? '');
+            if (!examState?.style?.arabicDigits) return str;
+            const map = ['٠', '١', '٢', '٣', '٤', '٥', '٦', '٧', '٨', '٩'];
+            return str.replace(/\d/g, d => map[Number(d)]);
+        }
+
+        /**
+         * تنسيق نص الدرجة باللغة العربية بشكل سليم (درجة / درجتان / درجات)
+         */
+        function formatMarksLabel(num) {
+            const n = Number(num) || 0;
+            const nStr = fmtNum(n);
+            if (n === 1) return 'درجة واحدة';
+            if (n === 2) return 'درجتان';
+            if (n >= 3 && n <= 10) return `${nStr} درجات`;
+            return `${nStr} درجة`;
+        }
+
+        /**
+         * حماية النصوص قبل عرضها داخل HTML مع الحفاظ على فواصل الأسطر
+         */
+        function escapeHtml(text) {
+            if (!text) return '';
+            return String(text)
+                .replace(/&/g, '&amp;')
+                .replace(/</g, '&lt;')
+                .replace(/>/g, '&gt;')
+                .replace(/"/g, '&quot;')
+                .replace(/'/g, '&#039;');
+        }
+
+        function formatMultiline(text) {
+            return escapeHtml(text).replace(/\n/g, '<br>');
+        }
+
+        /**
+         * عرض إشعار لطيف (Toast) بدلاً من alert()
+         */
+        function showToast(message, type = 'info') {
+            const container = document.getElementById('toast-container');
+            const toast = document.createElement('div');
+            const styles = {
+                success: 'bg-emerald-600 text-white',
+                error: 'bg-rose-600 text-white',
+                warning: 'bg-amber-500 text-white',
+                info: 'bg-slate-800 text-white'
+            };
+            toast.className = `pointer-events-auto px-4 py-2.5 rounded-xl shadow-lg text-xs sm:text-sm font-bold flex items-center gap-2 transition-all duration-300 translate-y-2 opacity-0 ${styles[type] || styles.info}`;
+            toast.textContent = message;
+            container.appendChild(toast);
+
+            requestAnimationFrame(() => {
+                toast.classList.remove('translate-y-2', 'opacity-0');
+            });
+
+            setTimeout(() => {
+                toast.classList.add('opacity-0', 'translate-y-2');
+                setTimeout(() => toast.remove(), 300);
+            }, 3000);
+        }
+
+        /**
+         * الحفظ التلقائي في localStorage مع معالجة الأخطاء
+         */
+        function saveState() {
+            const statusEl = document.getElementById('autosave-status');
+            try {
+                localStorage.setItem(STORAGE_KEY, JSON.stringify(examState));
+                if (statusEl) {
+                    statusEl.innerHTML = `<span class="w-1.5 h-1.5 rounded-full bg-emerald-500"></span> محفوظ تلقائياً`;
+                    statusEl.className = 'inline-flex items-center gap-1 text-emerald-600 font-medium';
+                }
+            } catch (err) {
+                console.error('Storage error:', err);
+                if (statusEl) {
+                    statusEl.innerHTML = `<span class="w-1.5 h-1.5 rounded-full bg-amber-500"></span> الذاكرة ممتلئة`;
+                    statusEl.className = 'inline-flex items-center gap-1 text-amber-600 font-medium';
+                }
+                showToast('تنبيه: مساحة الحفظ المحلية ممتلئة بسبب حجم الصور، يُنصح بحفظ نسخة JSON.', 'warning');
+            }
+        }
+
+        /**
+         * تحميل الحالة المحفوظة أو تحميل النموذج التجريبي في أول زيارة
+         */
+        function loadState() {
+            try {
+                const raw = localStorage.getItem(STORAGE_KEY);
+                if (raw) {
+                    const parsed = JSON.parse(raw);
+                    if (parsed && parsed.header && Array.isArray(parsed.questions)) {
+                        examState = parsed;
+                        return;
+                    }
+                }
+            } catch (err) {
+                console.warn('Could not parse saved state, loading sample:', err);
+            }
+            examState = getSampleExamState();
+        }
+
+        /**
+         * ضغط الصور المرفوعة تلقائياً لتقليل حجمها وضمان سرعة الأداء والحفظ
+         */
+        function readAndCompressImage(file, maxDimension, callback) {
+            try {
+                const reader = new FileReader();
+                reader.onload = function (e) {
+                    const img = new Image();
+                    img.onload = function () {
+                        let w = img.width;
+                        let h = img.height;
+                        if (w > maxDimension || h > maxDimension) {
+                            const ratio = Math.min(maxDimension / w, maxDimension / h);
+                            w = Math.round(w * ratio);
+                            h = Math.round(h * ratio);
+                        }
+                        const canvas = document.createElement('canvas');
+                        canvas.width = w;
+                        canvas.height = h;
+                        const ctx = canvas.getContext('2d');
+                        ctx.drawImage(img, 0, 0, w, h);
+                        // الحفاظ على الشفافية للشعارات إن كانت PNG
+                        const mimeType = file.type === 'image/png' ? 'image/png' : 'image/jpeg';
+                        const quality = mimeType === 'image/jpeg' ? 0.85 : undefined;
+                        callback(canvas.toDataURL(mimeType, quality));
+                    };
+                    img.onerror = function () {
+                        showToast('تعذّر قراءة الصورة المختارة.', 'error');
+                    };
+                    img.src = e.target.result;
+                };
+                reader.readAsDataURL(file);
+            } catch (err) {
+                showToast('حدث خطأ أثناء معالجة الصورة.', 'error');
+            }
+        }
+
+        // =========================================================================
+        // 3. حساب الدرجات وتحديث المؤشرات الحية
+        // =========================================================================
+
+        function getQuestionEffectiveMarks(q) {
+            if (q.type === 'branches' && q.autoSumBranches && Array.isArray(q.branches)) {
+                return q.branches.reduce((sum, b) => sum + (parseFloat(b.marks) || 0), 0);
+            }
+            return parseFloat(q.marks) || 0;
+        }
+
+        function updateGradesDisplay() {
+            const total = examState.questions.reduce((acc, q) => acc + getQuestionEffectiveMarks(q), 0);
+            // تقريب بسيط لتفادي مشاكل الكسور العشرية مثل 10.0000001
+            const cleanTotal = Math.round(total * 100) / 100;
+            const target = parseFloat(examState.targetGrade) || 0;
+            const diff = Math.round((target - cleanTotal) * 100) / 100;
+
+            const pill = document.getElementById('grade-indicator-pill');
+            const headerText = document.getElementById('header-grade-text');
+            const headerBadge = document.getElementById('header-grade-badge');
+            const editorStatus = document.getElementById('editor-grade-status');
+
+            headerText.textContent = `${cleanTotal} / ${target}`;
+
+            if (diff === 0 && target > 0) {
+                pill.className = 'flex items-center gap-2 px-3 py-1.5 rounded-xl border text-xs sm:text-sm font-bold transition-colors bg-emerald-50 border-emerald-200 text-emerald-700';
+                headerBadge.className = 'hidden sm:inline-block px-2 py-0.5 rounded-lg text-xs bg-emerald-100 text-emerald-800';
+                headerBadge.textContent = 'متطابق ✓';
+                editorStatus.className = 'text-xs font-bold px-3 py-1.5 rounded-xl bg-emerald-50 text-emerald-700 border border-emerald-200';
+                editorStatus.textContent = `مجموع الأسئلة: ${cleanTotal} / ${target} (مكتمل ✓)`;
+            } else if (diff > 0) {
+                pill.className = 'flex items-center gap-2 px-3 py-1.5 rounded-xl border text-xs sm:text-sm font-bold transition-colors bg-amber-50 border-amber-300 text-amber-800';
+                headerBadge.className = 'hidden sm:inline-block px-2 py-0.5 rounded-lg text-xs bg-amber-100 text-amber-900';
+                headerBadge.textContent = `متبقي ${diff}`;
+                editorStatus.className = 'text-xs font-bold px-3 py-1.5 rounded-xl bg-amber-50 text-amber-800 border border-amber-300';
+                editorStatus.textContent = `المجموع: ${cleanTotal} (متبقي ${diff} درجة)`;
+            } else {
+                const over = Math.abs(diff);
+                pill.className = 'flex items-center gap-2 px-3 py-1.5 rounded-xl border text-xs sm:text-sm font-bold transition-colors bg-rose-50 border-rose-300 text-rose-700';
+                headerBadge.className = 'hidden sm:inline-block px-2 py-0.5 rounded-lg text-xs bg-rose-100 text-rose-800';
+                headerBadge.textContent = `زيادة ${over}`;
+                editorStatus.className = 'text-xs font-bold px-3 py-1.5 rounded-xl bg-rose-50 text-rose-700 border border-rose-300';
+                editorStatus.textContent = `المجموع: ${cleanTotal} (زيادة ${over} درجة عن المطلوب)`;
+            }
+
+            document.getElementById('questions-count-badge').textContent = examState.questions.length;
+        }
+
+        // =========================================================================
+        // 4. عرض ورقة الامتحان الحية (A4 Live Preview)
+        // =========================================================================
+
+        function renderExamPaper() {
+            const paper = document.getElementById('exam-paper');
+            const h = examState.header;
+            const f = examState.footer;
+            const s = examState.style;
+
+            // تطبيق الخط
+            paper.className = `exam-a4-sheet shadow-2xl rounded-sm paper-font-${s.fontFamily || 'amiri'}`;
+
+            // تحديد فئة الإطار
+            const frameClassMap = {
+                double: 'frame-double',
+                ornate: 'frame-ornate',
+                simple: 'frame-simple',
+                none: 'frame-none'
+            };
+            const frameClass = frameClassMap[s.borderStyle] || 'frame-double';
+
+            // بناء ترويسة الورقة (الكليشة)
+            const logoHtml = (h.logoDataUrl && h.showLogo)
+                ? `<img src="${h.logoDataUrl}" alt="شعار" style="height:${h.logoSize || 56}px; width:auto; object-fit:contain;" class="mx-auto mb-1">`
+                : '';
+
+            const headerHtml = `
+                <header class="pb-2.5 mb-2 border-b-2 border-slate-900">
+                    <div class="grid grid-cols-3 items-center gap-2 text-center" style="font-size: ${Math.max(12, s.fontSize - 1.5)}px; line-height: 1.55;">
+                        
+                        <!-- الطرف الأيمن: الجهة الرسمية -->
+                        <div class="text-right font-bold space-y-0.5">
+                            ${h.right1 ? `<div>${escapeHtml(h.right1)}</div>` : ''}
+                            ${h.right2 ? `<div>${escapeHtml(h.right2)}</div>` : ''}
+                            ${h.right3 ? `<div>${escapeHtml(h.right3)}</div>` : ''}
+                        </div>
+
+                        <!-- المنتصف: الشعار وعنوان الامتحان -->
+                        <div class="text-center flex flex-col items-center justify-center">
+                            ${logoHtml}
+                            ${h.title ? `<div class="font-extrabold" style="font-size: ${s.fontSize + 2.5}px;">${escapeHtml(h.title)}</div>` : ''}
+                            ${h.subtitle ? `<div class="font-bold text-slate-800" style="font-size: ${Math.max(11, s.fontSize - 2)}px;">${escapeHtml(fmtNum(h.subtitle))}</div>` : ''}
+                        </div>
+
+                        <!-- الطرف الأيسر: تفاصيل المادة -->
+                        <div class="text-right pr-2 sm:pr-4 font-bold space-y-0.5 border-r border-slate-300/80">
+                            ${h.subject ? `<div>المادة: <span class="font-normal">${escapeHtml(h.subject)}</span></div>` : ''}
+                            ${h.grade ? `<div>الصف: <span class="font-normal">${escapeHtml(h.grade)}</span></div>` : ''}
+                            ${h.time ? `<div>الوقت: <span class="font-normal">${escapeHtml(fmtNum(h.time))}</span></div>` : ''}
+                            ${h.date ? `<div>التاريخ: <span class="font-normal" dir="ltr">${escapeHtml(fmtNum(h.date))}</span></div>` : ''}
+                        </div>
+
+                    </div>
+
+                    ${h.note ? `
+                        <div class="mt-2.5 py-1 px-3 text-center font-bold border border-slate-800 rounded ${s.shadeNote ? 'bg-slate-100' : 'bg-white'}" style="font-size: ${Math.max(12, s.fontSize - 1)}px;">
+                            ${escapeHtml(fmtNum(h.note))}
+                        </div>
+                    ` : ''}
+                </header>
+            `;
+
+            // بناء قائمة الأسئلة
+            let questionsHtml = '';
+            if (examState.questions.length === 0) {
+                questionsHtml = `
+                    <div class="py-16 text-center text-slate-400 italic">
+                        لا توجد أسئلة بعد. أضف سؤالاً من لوحة التحرير للبدء.
+                    </div>
+                `;
+            } else {
+                questionsHtml = examState.questions.map((q, idx) => {
+                    const qNum = fmtNum(idx + 1);
+                    const effMarks = getQuestionEffectiveMarks(q);
+                    const markText = s.showMarks ? `(${formatMarksLabel(effMarks)})` : '';
+
+                    // الصورة المرفقة بالسؤال إن وجدت
+                    let imageHtml = '';
+                    if (q.image) {
+                        const alignMap = {
+                            center: 'justify-center',
+                            right: 'justify-start',
+                            left: 'justify-end'
+                        };
+                        imageHtml = `
+                            <div class="my-2 flex ${alignMap[q.imageAlign] || 'justify-center'} avoid-break">
+                                <img src="${q.image}" alt="شكل توضيحي" style="width: ${q.imageWidth || 45}%; max-height: 260px; object-fit: contain;" class="border border-slate-200 rounded p-1 bg-white">
+                            </div>
+                        `;
+                    }
+
+                    // محتوى السؤال حسب نوعه
+                    let bodyHtml = '';
+
+                    if (q.type === 'essay') {
+                        bodyHtml = `
+                            <div class="pr-6 mt-0.5">${formatMultiline(fmtNum(q.text))}</div>
+                            ${q.note ? `<div class="pr-6 text-slate-700 font-bold mt-0.5" style="font-size: ${Math.max(11, s.fontSize - 1.5)}px;">(${escapeHtml(fmtNum(q.note))})</div>` : ''}
+                            ${imageHtml}
+                        `;
+                    } else if (q.type === 'branches') {
+                        const branchesList = (q.branches || []).map((b, bIdx) => {
+                            const letter = BRANCH_LETTERS[bIdx] || fmtNum(bIdx + 1);
+                            const bMark = (s.showMarks && b.marks !== '' && b.marks !== null && b.marks !== undefined && Number(b.marks) > 0)
+                                ? `<span class="font-bold whitespace-nowrap mr-2" style="font-size: ${Math.max(11, s.fontSize - 1.5)}px;">(${formatMarksLabel(b.marks)})</span>`
+                                : '';
+                            return `
+                                <div class="flex items-baseline justify-between gap-2 avoid-break">
+                                    <div class="flex items-baseline gap-1.5 flex-1">
+                                        <span class="font-extrabold whitespace-nowrap">${letter}-</span>
+                                        <span>${formatMultiline(fmtNum(b.text))}</span>
+                                    </div>
+                                    ${bMark}
+                                </div>
+                            `;
+                        }).join('');
+
+                        bodyHtml = `
+                            ${q.text ? `<div class="pr-6 font-bold">${formatMultiline(fmtNum(q.text))} ${q.note ? `<span class="font-normal text-slate-700" style="font-size: ${Math.max(11, s.fontSize - 1.5)}px;">(${escapeHtml(fmtNum(q.note))})</span>` : ''}</div>` : ''}
+                            ${imageHtml}
+                            <div class="pr-8 mt-1.5 space-y-1.5">${branchesList}</div>
+                        `;
+                    } else if (q.type === 'mcq') {
+                        const layoutClass = q.mcqLayout === '1row'
+                            ? 'flex flex-wrap gap-x-6 gap-y-1'
+                            : (q.mcqLayout === '1col' ? 'grid grid-cols-1 gap-y-1' : 'grid grid-cols-2 gap-x-6 gap-y-1');
+
+                        const itemsHtml = (q.mcqItems || []).map((item, iIdx) => {
+                            const showNum = (q.mcqItems.length > 1);
+                            const optsHtml = (item.options || []).map((opt, oIdx) => {
+                                const oLetter = MCQ_LETTERS[oIdx] || fmtNum(oIdx + 1);
+                                return `<div class="flex items-baseline gap-1"><span class="font-bold">${oLetter}-</span><span>${escapeHtml(fmtNum(opt))}</span></div>`;
+                            }).join('');
+
+                            return `
+                                <div class="avoid-break">
+                                    <div class="flex items-baseline gap-1.5">
+                                        ${showNum ? `<span class="font-bold">${fmtNum(iIdx + 1)}-</span>` : ''}
+                                        <span>${formatMultiline(fmtNum(item.prompt))}</span>
+                                    </div>
+                                    <div class="pr-5 mt-1 ${layoutClass}">
+                                        ${optsHtml}
+                                    </div>
+                                </div>
+                            `;
+                        }).join('');
+
+                        bodyHtml = `
+                            ${q.text ? `<div class="pr-6 font-bold">${formatMultiline(fmtNum(q.text))} ${q.note ? `<span class="font-normal text-slate-700" style="font-size: ${Math.max(11, s.fontSize - 1.5)}px;">(${escapeHtml(fmtNum(q.note))})</span>` : ''}</div>` : ''}
+                            ${imageHtml}
+                            <div class="pr-8 mt-1.5 space-y-2.5">${itemsHtml}</div>
+                        `;
+                    } else if (q.type === 'list') {
+                        const listHtml = (q.listItems || []).map((item, iIdx) => `
+                            <div class="flex items-baseline gap-1.5 avoid-break">
+                                <span class="font-bold whitespace-nowrap">${fmtNum(iIdx + 1)}-</span>
+                                <span>${formatMultiline(fmtNum(item.text))}</span>
+                            </div>
+                        `).join('');
+
+                        bodyHtml = `
+                            ${q.text ? `<div class="pr-6 font-bold">${formatMultiline(fmtNum(q.text))} ${q.note ? `<span class="font-normal text-slate-700" style="font-size: ${Math.max(11, s.fontSize - 1.5)}px;">(${escapeHtml(fmtNum(q.note))})</span>` : ''}</div>` : ''}
+                            ${imageHtml}
+                            <div class="pr-8 mt-1.5 space-y-1.5">${listHtml}</div>
+                        `;
+                    }
+
+                    // في السؤال النصي يظهر نص السؤال بجانب س1 مباشرة إذا أردنا، أو بشكل موحد وواضح
+                    if (q.type === 'essay') {
+                        return `
+                            <div class="avoid-break" style="margin-bottom: ${s.questionGap}px;">
+                                <div class="flex items-baseline justify-between gap-3">
+                                    <div class="flex items-baseline gap-1.5 flex-1">
+                                        <span class="font-extrabold whitespace-nowrap underline underline-offset-4">س${qNum}:</span>
+                                        <div>
+                                            ${formatMultiline(fmtNum(q.text))}
+                                            ${q.note ? `<div class="text-slate-700 font-bold mt-0.5" style="font-size: ${Math.max(11, s.fontSize - 1.5)}px;">(${escapeHtml(fmtNum(q.note))})</div>` : ''}
+                                        </div>
+                                    </div>
+                                    ${markText ? `<span class="font-extrabold whitespace-nowrap">${markText}</span>` : ''}
+                                </div>
+                                ${imageHtml}
+                            </div>
+                        `;
+                    }
+
+                    return `
+                        <div style="margin-bottom: ${s.questionGap}px;">
+                            <div class="flex items-baseline justify-between gap-3 avoid-break">
+                                <div class="flex items-baseline gap-1.5 flex-1">
+                                    <span class="font-extrabold whitespace-nowrap underline underline-offset-4">س${qNum}:</span>
+                                    <span class="font-bold">${formatMultiline(fmtNum(q.text))} ${q.note ? `<span class="font-normal text-slate-700" style="font-size: ${Math.max(11, s.fontSize - 1.5)}px;">(${escapeHtml(fmtNum(q.note))})</span>` : ''}</span>
+                                </div>
+                                ${markText ? `<span class="font-extrabold whitespace-nowrap">${markText}</span>` : ''}
+                            </div>
+                            ${imageHtml}
+                            ${q.type === 'branches' ? `<div class="pr-7 mt-1.5 space-y-1.5">${(q.branches || []).map((b, bIdx) => {
+                                const letter = BRANCH_LETTERS[bIdx] || fmtNum(bIdx + 1);
+                                const bMark = (s.showMarks && Number(b.marks) > 0)
+                                    ? `<span class="font-bold whitespace-nowrap mr-2" style="font-size: ${Math.max(11, s.fontSize - 1.5)}px;">(${formatMarksLabel(b.marks)})</span>`
+                                    : '';
+                                return `
+                                    <div class="flex items-baseline justify-between gap-2 avoid-break">
+                                        <div class="flex items-baseline gap-1.5 flex-1">
+                                            <span class="font-extrabold whitespace-nowrap">${letter}-</span>
+                                            <span>${formatMultiline(fmtNum(b.text))}</span>
+                                        </div>
+                                        ${bMark}
+                                    </div>
+                                `;
+                            }).join('')}</div>` : ''}
+                            ${q.type === 'mcq' ? `<div class="pr-7 mt-1.5 space-y-2.5">${(q.mcqItems || []).map((item, iIdx) => {
+                                const layoutClass = q.mcqLayout === '1row'
+                                    ? 'flex flex-wrap gap-x-6 gap-y-1'
+                                    : (q.mcqLayout === '1col' ? 'grid grid-cols-1 gap-y-1' : 'grid grid-cols-2 gap-x-6 gap-y-1');
+                                const showNum = (q.mcqItems.length > 1);
+                                const optsHtml = (item.options || []).map((opt, oIdx) => {
+                                    const oLetter = MCQ_LETTERS[oIdx] || fmtNum(oIdx + 1);
+                                    return `<div class="flex items-baseline gap-1"><span class="font-bold">${oLetter}-</span><span>${escapeHtml(fmtNum(opt))}</span></div>`;
+                                }).join('');
+                                return `
+                                    <div class="avoid-break">
+                                        <div class="flex items-baseline gap-1.5">
+                                            ${showNum ? `<span class="font-bold">${fmtNum(iIdx + 1)}-</span>` : ''}
+                                            <span>${formatMultiline(fmtNum(item.prompt))}</span>
+                                        </div>
+                                        <div class="pr-5 mt-1 ${layoutClass}">${optsHtml}</div>
+                                    </div>
+                                `;
+                            }).join('')}</div>` : ''}
+                            ${q.type === 'list' ? `<div class="pr-7 mt-1.5 space-y-1.5">${(q.listItems || []).map((item, iIdx) => `
+                                <div class="flex items-baseline gap-1.5 avoid-break">
+                                    <span class="font-bold whitespace-nowrap">${fmtNum(iIdx + 1)}-</span>
+                                    <span>${formatMultiline(fmtNum(item.text))}</span>
+                                </div>
+                            `).join('')}</div>` : ''}
+                        </div>
+                    `;
+                }).join('');
+            }
+
+            // بناء تذييل الورقة
+            const footerHtml = (f.teacher || f.closing) ? `
+                <footer class="pt-3 mt-4 border-t border-slate-400 flex items-center justify-between gap-4 font-bold avoid-break" style="font-size: ${Math.max(12, s.fontSize - 1)}px;">
+                    <div>${escapeHtml(f.teacher || '')}</div>
+                    <div class="text-center flex-1">${escapeHtml(f.closing || '')}</div>
+                    <div class="w-16 hidden sm:block"></div>
+                </footer>
+            ` : '';
+
+            // تجميع الورقة بالكامل
+            paper.innerHTML = `
+                <div class="exam-frame ${frameClass}">
+                    <div>
+                        ${headerHtml}
+                        <div class="mt-3" style="font-size: ${s.fontSize}px; line-height: ${s.lineHeight};">
+                            ${questionsHtml}
+                        </div>
+                    </div>
+                    ${footerHtml}
+                </div>
+            `;
+
+            updateGradesDisplay();
+            updatePaperScale();
+        }
+
+        // =========================================================================
+        // 5. بناء لوحة تحرير الأسئلة (Questions Editor UI)
+        // =========================================================================
+
+        function getQuestionTypeLabel(type) {
+            const map = {
+                essay: { name: 'نصي / مقالي', cls: 'bg-indigo-100 text-indigo-800' },
+                branches: { name: 'فروع (أ، ب، ج)', cls: 'bg-emerald-100 text-emerald-800' },
+                mcq: { name: 'اختيار من متعدد', cls: 'bg-amber-100 text-amber-800' },
+                list: { name: 'صح وخطأ / فراغات', cls: 'bg-sky-100 text-sky-800' }
+            };
+            return map[type] || map.essay;
+        }
+
+        function renderQuestionsEditor() {
+            const container = document.getElementById('questions-editor-list');
+            if (!examState.questions.length) {
+                container.innerHTML = `
+                    <div class="bg-white rounded-2xl border border-slate-200 p-8 text-center text-slate-500 text-sm">
+                        لا توجد أسئلة حالياً. استخدم الأزرار أدناه لإضافة سؤالك الأول.
+                    </div>
+                `;
+                return;
+            }
+
+            container.innerHTML = examState.questions.map((q, idx) => {
+                const badge = getQuestionTypeLabel(q.type);
+                const isCollapsed = collapsedQuestions.has(q.id);
+                const effMarks = getQuestionEffectiveMarks(q);
+
+                // حقول التحرير الخاصة بكل نوع سؤال
+                let specificFieldsHtml = '';
+
+                if (q.type === 'branches') {
+                    const branchesHtml = (q.branches || []).map((b, bIdx) => `
+                        <div class="p-2.5 rounded-xl bg-slate-50 border border-slate-200 space-y-2">
+                            <div class="flex items-center justify-between gap-2">
+                                <span class="text-xs font-extrabold text-emerald-700 bg-emerald-100 px-2 py-0.5 rounded-lg">فرع (${BRANCH_LETTERS[bIdx] || (bIdx + 1)})</span>
+                                <div class="flex items-center gap-2">
+                                    <label class="text-[11px] font-bold text-slate-500">الدرجة:</label>
+                                    <input type="number" min="0" step="0.5" value="${b.marks ?? ''}" class="w-16 px-2 py-1 rounded-lg border border-slate-300 text-xs font-bold text-center bg-white focus:ring-2 focus:ring-indigo-500 outline-none" oninput="updateBranchField('${q.id}', '${b.id}', 'marks', this.value)">
+                                    <button type="button" onclick="deleteBranch('${q.id}', '${b.id}')" class="p-1 rounded-lg text-rose-500 hover:bg-rose-100 transition" title="حذف الفرع">
+                                        <svg class="w-4 h-4" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M6 18L18 6M6 6l12 12"/></svg>
+                                    </button>
+                                </div>
+                            </div>
+                            <textarea rows="2" class="w-full px-2.5 py-1.5 rounded-lg border border-slate-300 text-sm bg-white focus:ring-2 focus:ring-indigo-500 outline-none" placeholder="اكتب نص الفرع هنا..." oninput="updateBranchField('${q.id}', '${b.id}', 'text', this.value)">${escapeHtml(b.text)}</textarea>
+                        </div>
+                    `).join('');
+
+                    specificFieldsHtml = `
+                        <div class="space-y-2 pt-1">
+                            <div class="flex flex-wrap items-center justify-between gap-2">
+                                <label class="inline-flex items-center gap-2 text-xs font-bold text-slate-700 cursor-pointer">
+                                    <input type="checkbox" ${q.autoSumBranches ? 'checked' : ''} class="w-4 h-4 accent-indigo-600 rounded" onchange="toggleAutoSumBranches('${q.id}', this.checked)">
+                                    حساب درجة السؤال تلقائياً من مجموع الفروع
+                                </label>
+                                <span class="text-[11px] text-slate-500">(ألغِ التفعيل عند وجود ترك فرع)</span>
+                            </div>
+                            <div class="space-y-2">${branchesHtml}</div>
+                            <button type="button" onclick="addBranch('${q.id}')" class="w-full py-2 rounded-xl border border-dashed border-emerald-300 text-emerald-700 hover:bg-emerald-50 text-xs font-bold transition">+ إضافة فرع جديد</button>
+                        </div>
+                    `;
+                } else if (q.type === 'mcq') {
+                    const itemsHtml = (q.mcqItems || []).map((item, iIdx) => `
+                        <div class="p-3 rounded-xl bg-slate-50 border border-slate-200 space-y-2">
+                            <div class="flex items-center justify-between gap-2">
+                                <span class="text-xs font-extrabold text-amber-800 bg-amber-100 px-2 py-0.5 rounded-lg">نقطة (${iIdx + 1})</span>
+                                <button type="button" onclick="deleteMcqItem('${q.id}', '${item.id}')" class="p-1 rounded-lg text-rose-500 hover:bg-rose-100 transition" title="حذف النقطة">
+                                    <svg class="w-4 h-4" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M6 18L18 6M6 6l12 12"/></svg>
+                                </button>
+                            </div>
+                            <textarea rows="2" class="w-full px-2.5 py-1.5 rounded-lg border border-slate-300 text-sm bg-white focus:ring-2 focus:ring-indigo-500 outline-none" placeholder="نص الفقرة أو السؤال..." oninput="updateMcqPrompt('${q.id}', '${item.id}', this.value)">${escapeHtml(item.prompt)}</textarea>
+                            <div class="grid grid-cols-1 sm:grid-cols-2 gap-1.5">
+                                ${(item.options || []).map((opt, oIdx) => `
+                                    <div class="flex items-center gap-1">
+                                        <span class="text-xs font-bold text-slate-500 w-5 text-center">${MCQ_LETTERS[oIdx] || (oIdx + 1)}-</span>
+                                        <input type="text" value="${escapeHtml(opt)}" class="flex-1 px-2 py-1 rounded-lg border border-slate-300 text-xs bg-white focus:ring-2 focus:ring-indigo-500 outline-none" placeholder="خيار ${MCQ_LETTERS[oIdx] || (oIdx + 1)}" oninput="updateMcqOption('${q.id}', '${item.id}', ${oIdx}, this.value)">
+                                        ${item.options.length > 2 ? `<button type="button" onclick="removeMcqOption('${q.id}', '${item.id}', ${oIdx})" class="text-slate-400 hover:text-rose-500 px-1 text-xs">✕</button>` : ''}
+                                    </div>
+                                `).join('')}
+                            </div>
+                            ${(item.options || []).length < 5 ? `<button type="button" onclick="addMcqOption('${q.id}', '${item.id}')" class="text-[11px] font-bold text-indigo-600 hover:underline">+ إضافة خيار آخر</button>` : ''}
+                        </div>
+                    `).join('');
+
+                    specificFieldsHtml = `
+                        <div class="space-y-2.5 pt-1">
+                            <div class="flex items-center gap-2 text-xs">
+                                <span class="font-bold text-slate-600">ترتيب الخيارات:</span>
+                                <select class="px-2.5 py-1 rounded-lg border border-slate-300 bg-white font-bold text-xs outline-none" onchange="updateQuestionField('${q.id}', 'mcqLayout', this.value, false)">
+                                    <option value="2cols" ${q.mcqLayout === '2cols' ? 'selected' : ''}>عمودين (الأكثر ترتيباً)</option>
+                                    <option value="1row" ${q.mcqLayout === '1row' ? 'selected' : ''}>صف واحد أفقي</option>
+                                    <option value="1col" ${q.mcqLayout === '1col' ? 'selected' : ''}>عمود واحد (تحت بعض)</option>
+                                </select>
+                            </div>
+                            <div class="space-y-2">${itemsHtml}</div>
+                            <button type="button" onclick="addMcqItem('${q.id}')" class="w-full py-2 rounded-xl border border-dashed border-amber-300 text-amber-800 hover:bg-amber-50 text-xs font-bold transition">+ إضافة فقرة اختيار من متعدد</button>
+                        </div>
+                    `;
+                } else if (q.type === 'list') {
+                    const listHtml = (q.listItems || []).map((item, iIdx) => `
+                        <div class="flex items-start gap-1.5">
+                            <span class="mt-2 text-xs font-extrabold text-sky-700 bg-sky-100 w-6 h-6 rounded-lg flex items-center justify-center shrink-0">${iIdx + 1}</span>
+                            <textarea rows="2" class="flex-1 px-2.5 py-1.5 rounded-xl border border-slate-300 text-sm bg-white focus:ring-2 focus:ring-indigo-500 outline-none" placeholder="اكتب العبارة هنا (يمكنك إدراج فراغ من شريط الرموز بالأعلى)..." oninput="updateListItem('${q.id}', '${item.id}', this.value)">${escapeHtml(item.text)}</textarea>
+                            <button type="button" onclick="deleteListItem('${q.id}', '${item.id}')" class="mt-1.5 p-1.5 rounded-lg text-rose-500 hover:bg-rose-100 transition" title="حذف النقطة">
+                                <svg class="w-4 h-4" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M6 18L18 6M6 6l12 12"/></svg>
+                            </button>
+                        </div>
+                    `).join('');
+
+                    specificFieldsHtml = `
+                        <div class="space-y-2 pt-1">
+                            <div class="space-y-2">${listHtml}</div>
+                            <button type="button" onclick="addListItem('${q.id}')" class="w-full py-2 rounded-xl border border-dashed border-sky-300 text-sky-700 hover:bg-sky-50 text-xs font-bold transition">+ إضافة نقطة مرقمة جديدة</button>
+                        </div>
+                    `;
+                }
+
+                // قسم إرفاق الصورة التوضيحية داخل السؤال
+                const imageControlHtml = `
+                    <div class="p-2.5 rounded-xl bg-slate-50 border border-slate-200 space-y-2">
+                        <div class="flex flex-wrap items-center justify-between gap-2">
+                            <span class="text-xs font-bold text-slate-600 flex items-center gap-1.5">
+                                <svg class="w-4 h-4 text-slate-500" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M4 16l4.586-4.586a2 2 0 012.828 0L16 16m-2-2l1.586-1.586a2 2 0 012.828 0L20 14m-6-6h.01M6 20h12a2 2 0 002-2V6a2 2 0 00-2-2H6a2 2 0 00-2 2v12a2 2 0 002 2z"/></svg>
+                                صورة توضيحية / شكل هندسي
+                            </span>
+                            <div class="flex items-center gap-1.5">
+                                <label class="cursor-pointer px-2.5 py-1 rounded-lg bg-white border border-slate-300 hover:bg-indigo-50 hover:text-indigo-700 text-xs font-bold transition">
+                                    ${q.image ? 'تغيير الصورة' : 'إرفاق صورة'}
+                                    <input type="file" accept="image/*" class="hidden" onchange="handleQuestionImageUpload(event, '${q.id}')">
+                                </label>
+                                ${q.image ? `<button type="button" onclick="removeQuestionImage('${q.id}')" class="px-2 py-1 rounded-lg bg-rose-100 hover:bg-rose-200 text-rose-700 text-xs font-bold">حذف</button>` : ''}
+                            </div>
+                        </div>
+                        ${q.image ? `
+                            <div class="flex flex-wrap items-center gap-3 pt-1">
+                                <div class="flex items-center gap-2 flex-1 min-w-[140px]">
+                                    <span class="text-[11px] font-bold text-slate-600">الحجم (${q.imageWidth || 45}%):</span>
+                                    <input type="range" min="20" max="100" value="${q.imageWidth || 45}" class="flex-1 accent-indigo-600" oninput="updateQuestionField('${q.id}', 'imageWidth', Number(this.value), false); this.previousElementSibling.textContent='الحجم ('+this.value+'%):'">
+                                </div>
+                                <select class="px-2 py-1 rounded-lg border border-slate-300 bg-white text-xs font-bold outline-none" onchange="updateQuestionField('${q.id}', 'imageAlign', this.value, false)">
+                                    <option value="center" ${q.imageAlign === 'center' ? 'selected' : ''}>توسيط</option>
+                                    <option value="right" ${q.imageAlign === 'right' ? 'selected' : ''}>يمين</option>
+                                    <option value="left" ${q.imageAlign === 'left' ? 'selected' : ''}>يسار</option>
+                                </select>
+                            </div>
+                        ` : ''}
+                    </div>
+                `;
+
+                return `
+                    <div class="bg-white rounded-2xl border border-slate-200 shadow-sm overflow-hidden transition">
+                        <!-- شريط عنوان بطاقة السؤال -->
+                        <div class="bg-slate-50/90 px-3.5 py-2.5 border-b border-slate-200 flex flex-wrap items-center justify-between gap-2">
+                            <div class="flex items-center gap-2">
+                                <button type="button" onclick="toggleQuestionCollapse('${q.id}')" class="w-6 h-6 rounded-lg hover:bg-slate-200 flex items-center justify-center text-slate-600 transition" title="${isCollapsed ? 'توسيع' : 'طي'}">
+                                    <svg class="w-4 h-4 transition-transform ${isCollapsed ? '-rotate-90' : ''}" fill="none" stroke="currentColor" stroke-width="2.5" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M19 9l-7 7-7-7"/></svg>
+                                </button>
+                                <span class="font-extrabold text-sm text-indigo-700">س${idx + 1}</span>
+                                <span class="text-[11px] font-bold px-2 py-0.5 rounded-lg ${badge.cls}">${badge.name}</span>
+                            </div>
+
+                            <div class="flex items-center gap-1.5">
+                                <!-- حقل درجة السؤال -->
+                                <div class="flex items-center gap-1 bg-white border border-slate-200 rounded-xl px-2 py-1">
+                                    <span class="text-[11px] font-bold text-slate-500">الدرجة:</span>
+                                    ${(q.type === 'branches' && q.autoSumBranches)
+                                        ? `<span class="text-xs font-extrabold text-emerald-700 px-1.5" title="محسوبة تلقائياً من الفروع">${effMarks}</span>`
+                                        : `<input type="number" min="0" step="0.5" value="${q.marks}" class="w-12 text-center text-xs font-extrabold text-slate-800 outline-none" oninput="updateQuestionField('${q.id}', 'marks', this.value, false)">`
+                                    }
+                                </div>
+
+                                <!-- أزرار التحكم بالسؤال (أعلى، أسفل، تكرار، حذف) -->
+                                <button type="button" onclick="moveQuestion(${idx}, -1)" ${idx === 0 ? 'disabled' : ''} class="p-1.5 rounded-lg hover:bg-slate-200 text-slate-600 disabled:opacity-30 transition" title="تحريك للأعلى">
+                                    <svg class="w-4 h-4" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M5 15l7-7 7 7"/></svg>
+                                </button>
+                                <button type="button" onclick="moveQuestion(${idx}, 1)" ${idx === examState.questions.length - 1 ? 'disabled' : ''} class="p-1.5 rounded-lg hover:bg-slate-200 text-slate-600 disabled:opacity-30 transition" title="تحريك للأسفل">
+                                    <svg class="w-4 h-4" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M19 9l-7 7-7-7"/></svg>
+                                </button>
+                                <button type="button" onclick="duplicateQuestion(${idx})" class="p-1.5 rounded-lg hover:bg-indigo-100 text-indigo-600 transition" title="تكرار السؤال">
+                                    <svg class="w-4 h-4" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M8 16H6a2 2 0 01-2-2V6a2 2 0 012-2h8a2 2 0 012 2v2m-6 12h8a2 2 0 002-2v-8a2 2 0 00-2-2h-8a2 2 0 00-2 2v8a2 2 0 002 2z"/></svg>
+                                </button>
+                                <button type="button" onclick="confirmDeleteQuestion('${q.id}', ${idx + 1})" class="p-1.5 rounded-lg hover:bg-rose-100 text-rose-600 transition" title="حذف السؤال">
+                                    <svg class="w-4 h-4" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16"/></svg>
+                                </button>
+                            </div>
+                        </div>
+
+                        <!-- جسم بطاقة السؤال -->
+                        <div class="${isCollapsed ? 'hidden' : 'p-3.5 space-y-3'}">
+                            <div class="grid grid-cols-1 gap-2">
+                                <div>
+                                    <label class="block text-xs font-bold text-slate-600 mb-1">${q.type === 'essay' ? 'نص السؤال' : 'منطوق / عنوان السؤال'}</label>
+                                    <textarea rows="${q.type === 'essay' ? 3 : 2}" class="w-full px-3 py-2 rounded-xl border border-slate-300 text-sm focus:ring-2 focus:ring-indigo-500 outline-none" placeholder="اكتب السؤال هنا..." oninput="updateQuestionField('${q.id}', 'text', this.value, false)">${escapeHtml(q.text)}</textarea>
+                                </div>
+                                <div>
+                                    <label class="block text-xs font-bold text-slate-600 mb-1">ملاحظة اختيارية للسؤال (مثل: أجب عن فرعين فقط)</label>
+                                    <input type="text" value="${escapeHtml(q.note || '')}" class="w-full px-3 py-1.5 rounded-xl border border-slate-300 text-xs focus:ring-2 focus:ring-indigo-500 outline-none" placeholder="اختياري..." oninput="updateQuestionField('${q.id}', 'note', this.value, false)">
+                                </div>
+                            </div>
+
+                            ${specificFieldsHtml}
+                            ${imageControlHtml}
+                        </div>
+                    </div>
+                `;
+            }).join('');
+        }
+
+        // =========================================================================
+        // 6. مزامنة حقول الكليشة والتنسيق مع الحالة
+        // =========================================================================
+
+        function syncHeaderAndStyleInputs() {
+            const h = examState.header;
+            const f = examState.footer;
+            const s = examState.style;
+
+            document.getElementById('target-grade-input').value = examState.targetGrade;
+
+            document.getElementById('h-right1').value = h.right1 || '';
+            document.getElementById('h-right2').value = h.right2 || '';
+            document.getElementById('h-right3').value = h.right3 || '';
+            document.getElementById('h-title').value = h.title || '';
+            document.getElementById('h-subtitle').value = h.subtitle || '';
+            document.getElementById('h-subject').value = h.subject || '';
+            document.getElementById('h-grade').value = h.grade || '';
+            document.getElementById('h-time').value = h.time || '';
+            document.getElementById('h-date').value = h.date || '';
+            document.getElementById('h-note').value = h.note || '';
+
+            document.getElementById('f-teacher').value = f.teacher || '';
+            document.getElementById('f-closing').value = f.closing || '';
+
+            // الشعار
+            const hasLogo = Boolean(h.logoDataUrl);
+            document.getElementById('btn-remove-logo').classList.toggle('hidden', !hasLogo);
+            document.getElementById('logo-controls').classList.toggle('hidden', !hasLogo);
+            document.getElementById('h-logoSize').value = h.logoSize || 56;
+            document.getElementById('logo-size-val').textContent = h.logoSize || 56;
+            document.getElementById('h-showLogo').checked = h.showLogo !== false;
+
+            // التنسيق
+            document.getElementById('s-fontSize').value = s.fontSize;
+            document.getElementById('style-fontSize-val').textContent = s.fontSize + 'px';
+            document.getElementById('s-lineHeight').value = s.lineHeight;
+            document.getElementById('style-lineHeight-val').textContent = s.lineHeight;
+            document.getElementById('s-questionGap').value = s.questionGap;
+            document.getElementById('style-questionGap-val').textContent = s.questionGap + 'px';
+            document.getElementById('s-arabicDigits').checked = Boolean(s.arabicDigits);
+            document.getElementById('s-showMarks').checked = s.showMarks !== false;
+            document.getElementById('s-shadeNote').checked = s.shadeNote !== false;
+
+            // تمييز أزرار الخط النشط والإطار النشط
+            document.querySelectorAll('.style-font-btn').forEach(btn => {
+                const active = btn.dataset.font === s.fontFamily;
+                btn.className = `style-font-btn p-2.5 rounded-xl border text-center transition ${active ? 'bg-indigo-50 border-indigo-500 text-indigo-800 ring-2 ring-indigo-200' : 'bg-white border-slate-200 text-slate-700 hover:bg-slate-50'}`;
+            });
+
+            document.querySelectorAll('.style-border-btn').forEach(btn => {
+                const active = btn.dataset.border === s.borderStyle;
+                btn.className = `style-border-btn p-2.5 rounded-xl border text-xs font-bold transition ${active ? 'bg-indigo-50 border-indigo-500 text-indigo-800 ring-2 ring-indigo-200' : 'bg-white border-slate-200 text-slate-700 hover:bg-slate-50'}`;
+            });
+        }
+
+        // =========================================================================
+        // 7. عمليات التعديل والإضافة والحذف
+        // =========================================================================
+
+        function updateTargetGrade(val) {
+            examState.targetGrade = Math.max(0, Number(val) || 0);
+            saveState();
+            updateGradesDisplay();
+        }
+
+        function updateHeaderField(key, val) {
+            examState.header[key] = val;
+            saveState();
+            renderExamPaper();
+        }
+
+        function updateFooterField(key, val) {
+            examState.footer[key] = val;
+            saveState();
+            renderExamPaper();
+        }
+
+        function updateStyleField(key, val) {
+            examState.style[key] = val;
+            saveState();
+            syncHeaderAndStyleInputs();
+            renderExamPaper();
+        }
+
+        function handleLogoUpload(event) {
+            const file = event.target.files?.[0];
+            if (!file) return;
+            readAndCompressImage(file, 360, (dataUrl) => {
+                examState.header.logoDataUrl = dataUrl;
+                examState.header.showLogo = true;
+                saveState();
+                syncHeaderAndStyleInputs();
+                renderExamPaper();
+                showToast('تم رفع الشعار بنجاح', 'success');
+            });
+            event.target.value = '';
+        }
+
+        function removeLogo() {
+            examState.header.logoDataUrl = '';
+            saveState();
+            syncHeaderAndStyleInputs();
+            renderExamPaper();
+            showToast('تم حذف الشعار', 'info');
+        }
+
+        function addQuestion(type) {
+            let newQ = {
+                id: uid(),
+                type,
+                text: '',
+                note: '',
+                marks: 20,
+                image: null,
+                imageWidth: 45,
+                imageAlign: 'center'
+            };
+
+            if (type === 'branches') {
+                newQ.text = 'أجب عما يأتي:';
+                newQ.autoSumBranches = true;
+                newQ.branches = [
+                    { id: uid(), text: '', marks: 10 },
+                    { id: uid(), text: '', marks: 10 }
+                ];
+            } else if (type === 'mcq') {
+                newQ.text = 'اختر الإجابة الصحيحة لكل مما يأتي:';
+                newQ.mcqLayout = '2cols';
+                newQ.mcqItems = [
+                    { id: uid(), prompt: '', options: ['', '', '', ''] }
+                ];
+            } else if (type === 'list') {
+                newQ.text = 'ضع علامة (✓) أمام العبارة الصحيحة وعلامة (✗) أمام العبارة الخاطئة:';
+                newQ.listItems = [
+                    { id: uid(), text: '' },
+                    { id: uid(), text: '' }
+                ];
+            }
+
+            examState.questions.push(newQ);
+            saveState();
+            renderQuestionsEditor();
+            renderExamPaper();
+            showToast('تمت إضافة سؤال جديد', 'success');
+        }
+
+        function updateQuestionField(qId, field, value, reRenderEditor = false) {
+            const q = examState.questions.find(item => item.id === qId);
+            if (!q) return;
+            q[field] = value;
+            saveState();
+            if (reRenderEditor) renderQuestionsEditor();
+            renderExamPaper();
+        }
+
+        function toggleAutoSumBranches(qId, checked) {
+            const q = examState.questions.find(item => item.id === qId);
+            if (!q) return;
+            q.autoSumBranches = checked;
+            if (!checked) {
+                q.marks = getQuestionEffectiveMarks(q);
+            }
+            saveState();
+            renderQuestionsEditor();
+            renderExamPaper();
+        }
+
+        function addBranch(qId) {
+            const q = examState.questions.find(item => item.id === qId);
+            if (!q) return;
+            q.branches = q.branches || [];
+            q.branches.push({ id: uid(), text: '', marks: 10 });
+            saveState();
+            renderQuestionsEditor();
+            renderExamPaper();
+        }
+
+        function updateBranchField(qId, bId, field, val) {
+            const q = examState.questions.find(item => item.id === qId);
+            const b = q?.branches?.find(item => item.id === bId);
+            if (!b) return;
+            b[field] = val;
+            saveState();
+            renderExamPaper();
+            // تحديث رقم الدرجة المعروض في شريط السؤال إذا كان الحساب التلقائي مفعلاً
+            if (field === 'marks' && q.autoSumBranches) {
+                renderQuestionsEditor();
+            }
+        }
+
+        function deleteBranch(qId, bId) {
+            const q = examState.questions.find(item => item.id === qId);
+            if (!q || !q.branches) return;
+            q.branches = q.branches.filter(b => b.id !== bId);
+            saveState();
+            renderQuestionsEditor();
+            renderExamPaper();
+        }
+
+        function addMcqItem(qId) {
+            const q = examState.questions.find(item => item.id === qId);
+            if (!q) return;
+            q.mcqItems = q.mcqItems || [];
+            q.mcqItems.push({ id: uid(), prompt: '', options: ['', '', '', ''] });
+            saveState();
+            renderQuestionsEditor();
+            renderExamPaper();
+        }
+
+        function deleteMcqItem(qId, itemId) {
+            const q = examState.questions.find(item => item.id === qId);
+            if (!q || !q.mcqItems) return;
+            q.mcqItems = q.mcqItems.filter(i => i.id !== itemId);
+            saveState();
+            renderQuestionsEditor();
+            renderExamPaper();
+        }
+
+        function updateMcqPrompt(qId, itemId, val) {
+            const q = examState.questions.find(item => item.id === qId);
+            const item = q?.mcqItems?.find(i => i.id === itemId);
+            if (!item) return;
+            item.prompt = val;
+            saveState();
+            renderExamPaper();
+        }
+
+        function updateMcqOption(qId, itemId, optIdx, val) {
+            const q = examState.questions.find(item => item.id === qId);
+            const item = q?.mcqItems?.find(i => i.id === itemId);
+            if (!item || !item.options) return;
+            item.options[optIdx] = val;
+            saveState();
+            renderExamPaper();
+        }
+
+        function addMcqOption(qId, itemId) {
+            const q = examState.questions.find(item => item.id === qId);
+            const item = q?.mcqItems?.find(i => i.id === itemId);
+            if (!item || item.options.length >= 5) return;
+            item.options.push('');
+            saveState();
+            renderQuestionsEditor();
+            renderExamPaper();
+        }
+
+        function removeMcqOption(qId, itemId, optIdx) {
+            const q = examState.questions.find(item => item.id === qId);
+            const item = q?.mcqItems?.find(i => i.id === itemId);
+            if (!item || item.options.length <= 2) return;
+            item.options.splice(optIdx, 1);
+            saveState();
+            renderQuestionsEditor();
+            renderExamPaper();
+        }
+
+        function addListItem(qId) {
+            const q = examState.questions.find(item => item.id === qId);
+            if (!q) return;
+            q.listItems = q.listItems || [];
+            q.listItems.push({ id: uid(), text: '' });
+            saveState();
+            renderQuestionsEditor();
+            renderExamPaper();
+        }
+
+        function updateListItem(qId, itemId, val) {
+            const q = examState.questions.find(item => item.id === qId);
+            const item = q?.listItems?.find(i => i.id === itemId);
+            if (!item) return;
+            item.text = val;
+            saveState();
+            renderExamPaper();
+        }
+
+        function deleteListItem(qId, itemId) {
+            const q = examState.questions.find(item => item.id === qId);
+            if (!q || !q.listItems) return;
+            q.listItems = q.listItems.filter(i => i.id !== itemId);
+            saveState();
+            renderQuestionsEditor();
+            renderExamPaper();
+        }
+
+        function handleQuestionImageUpload(event, qId) {
+            const file = event.target.files?.[0];
+            if (!file) return;
+            readAndCompressImage(file, 900, (dataUrl) => {
+                const q = examState.questions.find(item => item.id === qId);
+                if (!q) return;
+                q.image = dataUrl;
+                saveState();
+                renderQuestionsEditor();
+                renderExamPaper();
+                showToast('تم إرفاق الصورة في السؤال', 'success');
+            });
+            event.target.value = '';
+        }
+
+        function removeQuestionImage(qId) {
+            const q = examState.questions.find(item => item.id === qId);
+            if (!q) return;
+            q.image = null;
+            saveState();
+            renderQuestionsEditor();
+            renderExamPaper();
+            showToast('تمت إزالة الصورة', 'info');
+        }
+
+        function moveQuestion(index, delta) {
+            const newIndex = index + delta;
+            if (newIndex < 0 || newIndex >= examState.questions.length) return;
+            const [moved] = examState.questions.splice(index, 1);
+            examState.questions.splice(newIndex, 0, moved);
+            saveState();
+            renderQuestionsEditor();
+            renderExamPaper();
+        }
+
+        function duplicateQuestion(index) {
+            const orig = examState.questions[index];
+            if (!orig) return;
+            const copy = JSON.parse(JSON.stringify(orig));
+            copy.id = uid();
+            if (copy.branches) copy.branches.forEach(b => b.id = uid());
+            if (copy.mcqItems) copy.mcqItems.forEach(i => i.id = uid());
+            if (copy.listItems) copy.listItems.forEach(i => i.id = uid());
+            examState.questions.splice(index + 1, 0, copy);
+            saveState();
+            renderQuestionsEditor();
+            renderExamPaper();
+            showToast('تم تكرار السؤال بنجاح', 'success');
+        }
+
+        function toggleQuestionCollapse(qId) {
+            if (collapsedQuestions.has(qId)) {
+                collapsedQuestions.delete(qId);
+            } else {
+                collapsedQuestions.add(qId);
+            }
+            renderQuestionsEditor();
+        }
+
+        // =========================================================================
+        // 8. شريط الرموز السريعة
+        // =========================================================================
+
+        document.addEventListener('focusin', (e) => {
+            if (e.target && (e.target.tagName === 'TEXTAREA' || (e.target.tagName === 'INPUT' && e.target.type === 'text'))) {
+                lastFocusedInput = e.target;
+            }
+        });
+
+        function insertSymbol(sym) {
+            if (lastFocusedInput && document.body.contains(lastFocusedInput)) {
+                const start = lastFocusedInput.selectionStart ?? lastFocusedInput.value.length;
+                const end = lastFocusedInput.selectionEnd ?? lastFocusedInput.value.length;
+                const val = lastFocusedInput.value;
+                lastFocusedInput.value = val.slice(0, start) + sym + val.slice(end);
+                lastFocusedInput.focus();
+                const pos = start + sym.length;
+                lastFocusedInput.setSelectionRange(pos, pos);
+                lastFocusedInput.dispatchEvent(new Event('input', { bubbles: true }));
+            } else {
+                // نسخ احتياطي للحافظة باستخدام execCommand للتوافق الكامل
+                try {
+                    const temp = document.createElement('textarea');
+                    temp.value = sym;
+                    document.body.appendChild(temp);
+                    temp.select();
+                    document.execCommand('copy');
+                    temp.remove();
+                    showToast(`تم نسخ الرمز (${sym.trim()}) للحافظة`, 'info');
+                } catch (err) {
+                    showToast('اضغط داخل أي حقل نصي أولاً لإدراج الرمز', 'warning');
+                }
+            }
+        }
+
+        // =========================================================================
+        // 9. التبويبات، التجاوب، التكبير، النوافذ، والنسخ الاحتياطي JSON
+        // =========================================================================
+
+        function switchEditorTab(tab) {
+            activeEditorTab = tab;
+            ['questions', 'header', 'style'].forEach(t => {
+                const btn = document.getElementById('etab-' + t);
+                const content = document.getElementById('tab-content-' + t);
+                const isActive = (t === tab);
+                content.classList.toggle('hidden', !isActive);
+                btn.className = isActive
+                    ? 'flex-1 py-2 px-3 rounded-xl text-xs sm:text-sm font-bold bg-indigo-50 text-indigo-700 border border-indigo-200 transition flex items-center justify-center gap-1.5'
+                    : 'flex-1 py-2 px-3 rounded-xl text-xs sm:text-sm font-bold text-slate-600 hover:bg-slate-100 border border-transparent transition flex items-center justify-center gap-1.5';
+            });
+        }
+
+        function switchMobileView(view) {
+            activeMobileView = view;
+            const editorPanel = document.getElementById('editor-panel');
+            const previewPanel = document.getElementById('preview-panel');
+            const tabEditor = document.getElementById('mobile-tab-editor');
+            const tabPreview = document.getElementById('mobile-tab-preview');
+
+            if (view === 'editor') {
+                editorPanel.classList.remove('hidden');
+                previewPanel.classList.add('hidden');
+                previewPanel.classList.remove('flex');
+                tabEditor.className = 'py-2.5 rounded-xl text-sm font-bold bg-indigo-600 text-white shadow-sm transition flex items-center justify-center gap-2';
+                tabPreview.className = 'py-2.5 rounded-xl text-sm font-bold bg-white text-slate-700 border border-slate-200 transition flex items-center justify-center gap-2';
+            } else {
+                editorPanel.classList.add('hidden');
+                previewPanel.classList.remove('hidden');
+                previewPanel.classList.add('flex');
+                tabPreview.className = 'py-2.5 rounded-xl text-sm font-bold bg-indigo-600 text-white shadow-sm transition flex items-center justify-center gap-2';
+                tabEditor.className = 'py-2.5 rounded-xl text-sm font-bold bg-white text-slate-700 border border-slate-200 transition flex items-center justify-center gap-2';
+                setTimeout(updatePaperScale, 30);
+            }
+        }
+
+        /**
+         * حساب مقياس العرض التلقائي لورقة A4 لتناسب الشاشة بدون تمرير أفقي مزعج
+         */
+        function updatePaperScale() {
+            const scrollArea = document.getElementById('preview-scroll-area');
+            const wrapper = document.getElementById('paper-scale-wrapper');
+            const paper = document.getElementById('exam-paper');
+            const zoomLabel = document.getElementById('zoom-percent-label');
+            if (!scrollArea || !wrapper || !paper) return;
+
+            const availableWidth = scrollArea.clientWidth - 36;
+            if (availableWidth <= 0) return;
+
+            // عرض ورقة A4 بالبكسل تقريباً 794px عند 96dpi
+            const paperWidthPx = paper.offsetWidth || 794;
+            let scale = manualZoom !== null ? manualZoom : Math.min(1, availableWidth / paperWidthPx);
+            scale = Math.max(0.32, Math.min(1.4, scale));
+
+            wrapper.style.transform = `scale(${scale})`;
+
+            // تعديل الهامش السفلي لمنع الفراغ الزائد عند التصغير
+            const paperHeightPx = paper.offsetHeight || 1123;
+            const scaledHeightDiff = paperHeightPx * (1 - scale);
+            wrapper.style.marginBottom = scale < 1 ? `-${scaledHeightDiff}px` : '24px';
+
+            zoomLabel.textContent = manualZoom === null ? `تلقائي (${Math.round(scale * 100)}%)` : `${Math.round(scale * 100)}%`;
+        }
+
+        function adjustZoom(delta) {
+            const scrollArea = document.getElementById('preview-scroll-area');
+            const paper = document.getElementById('exam-paper');
+            const currentAuto = Math.min(1, ((scrollArea?.clientWidth || 800) - 36) / (paper?.offsetWidth || 794));
+            const base = manualZoom !== null ? manualZoom : currentAuto;
+            manualZoom = Math.max(0.4, Math.min(1.4, Math.round((base + delta) * 10) / 10));
+            updatePaperScale();
+        }
+
+        function resetZoomAuto() {
+            manualZoom = null;
+            updatePaperScale();
+        }
+
+        // نوافذ التأكيد المخصصة
+        function openConfirmModal(title, message, onConfirm) {
+            document.getElementById('confirm-modal-title').textContent = title;
+            document.getElementById('confirm-modal-message').textContent = message;
+            confirmCallback = onConfirm;
+            const modal = document.getElementById('confirm-modal');
+            modal.classList.remove('hidden');
+            modal.classList.add('flex');
+        }
+
+        function closeConfirmModal() {
+            const modal = document.getElementById('confirm-modal');
+            modal.classList.add('hidden');
+            modal.classList.remove('flex');
+            confirmCallback = null;
+        }
+
+        document.getElementById('confirm-modal-ok').addEventListener('click', () => {
+            if (typeof confirmCallback === 'function') confirmCallback();
+            closeConfirmModal();
+        });
+
+        function confirmDeleteQuestion(qId, qNum) {
+            openConfirmModal(
+                'حذف السؤال',
+                `هل أنت متأكد من حذف السؤال (س${qNum})؟ لا يمكن التراجع عن هذا الإجراء.`,
+                () => {
+                    examState.questions = examState.questions.filter(q => q.id !== qId);
+                    collapsedQuestions.delete(qId);
+                    saveState();
+                    renderQuestionsEditor();
+                    renderExamPaper();
+                    showToast('تم حذف السؤال', 'info');
+                }
+            );
+        }
+
+        function confirmLoadSample() {
+            openConfirmModal(
+                'تحميل نموذج تجريبي',
+                'سيتم استبدال الأسئلة الحالية بنموذج امتحان فيزياء تجريبي جاهز. هل تريد المتابعة؟',
+                () => {
+                    examState = getSampleExamState();
+                    collapsedQuestions.clear();
+                    saveState();
+                    syncHeaderAndStyleInputs();
+                    renderQuestionsEditor();
+                    renderExamPaper();
+                    showToast('تم تحميل النموذج التجريبي بنجاح', 'success');
+                }
+            );
+        }
+
+        function confirmClearAll() {
+            openConfirmModal(
+                'مسح جميع الأسئلة',
+                'سيتم تفريغ جميع الأسئلة وبدء ورقة امتحان جديدة فارغة. هل أنت متأكد؟',
+                () => {
+                    examState = getEmptyExamState();
+                    collapsedQuestions.clear();
+                    saveState();
+                    syncHeaderAndStyleInputs();
+                    renderQuestionsEditor();
+                    renderExamPaper();
+                    showToast('تم مسح البيانات وبدء ورقة جديدة', 'info');
+                }
+            );
+        }
+
+        // نافذة دليل GitHub Pages
+        function openGithubModal() {
+            const modal = document.getElementById('github-modal');
+            modal.classList.remove('hidden');
+            modal.classList.add('flex');
+        }
+
+        function closeGithubModal() {
+            const modal = document.getElementById('github-modal');
+            modal.classList.add('hidden');
+            modal.classList.remove('flex');
+        }
+
+        // تصدير واستيراد نسخة احتياطية JSON
+        function exportJSON() {
+            try {
+                const jsonStr = JSON.stringify(examState, null, 2);
+                const blob = new Blob([jsonStr], { type: 'application/json;charset=utf-8' });
+                const url = URL.createObjectURL(blob);
+                const a = document.createElement('a');
+                const dateStamp = new Date().toISOString().slice(0, 10);
+                const subjectSafe = (examState.header.subject || 'exam').replace(/[^\u0600-\u06FFa-zA-Z0-9_-]/g, '_');
+                a.href = url;
+                a.download = `اسئلة_${subjectSafe}_${dateStamp}.json`;
+                document.body.appendChild(a);
+                a.click();
+                a.remove();
+                URL.revokeObjectURL(url);
+                showToast('تم تحميل النسخة الاحتياطية (JSON) بنجاح', 'success');
+            } catch (err) {
+                showToast('تعذر تصدير الملف', 'error');
+            }
+        }
+
+        function importJSON(event) {
+            const file = event.target.files?.[0];
+            if (!file) return;
+            const reader = new FileReader();
+            reader.onload = function (e) {
+                try {
+                    const parsed = JSON.parse(e.target.result);
+                    if (!parsed || !parsed.header || !Array.isArray(parsed.questions)) {
+                        throw new Error('صيغة الملف غير صالحة');
+                    }
+                    examState = parsed;
+                    collapsedQuestions.clear();
+                    saveState();
+                    syncHeaderAndStyleInputs();
+                    renderQuestionsEditor();
+                    renderExamPaper();
+                    showToast('تمت استعادة النسخة الاحتياطية بنجاح', 'success');
+                } catch (err) {
+                    showToast('الملف المختار غير صالح أو تالف', 'error');
+                }
+            };
+            reader.readAsText(file);
+            event.target.value = '';
+        }
+
+        // طباعة الورقة أو حفظها بصيغة PDF
+        function printExam() {
+            // التأكد من ظهور الورقة أثناء الطباعة حتى لو كان المستخدم في تبويب التحرير على الهاتف
+            const originalTitle = document.title;
+            const subject = examState.header.subject ? `أسئلة ${examState.header.subject}` : 'ورقة الأسئلة الامتحانية';
+            const grade = examState.header.grade ? ` - ${examState.header.grade}` : '';
+            document.title = subject + grade;
+
+            window.print();
+
+            setTimeout(() => {
+                document.title = originalTitle;
+            }, 500);
+        }
+
+        // =========================================================================
+        // 10. التهيئة الأولية عند فتح التطبيق
+        // =========================================================================
+
+        window.addEventListener('resize', () => {
+            // عند تكبير الشاشة لوضع الحاسوب، نضمن ظهور اللوحتين معاً
+            if (window.innerWidth >= 1024) {
+                document.getElementById('editor-panel').classList.remove('hidden');
+                document.getElementById('preview-panel').classList.remove('hidden');
+                document.getElementById('preview-panel').classList.add('flex');
+            } else {
+                switchMobileView(activeMobileView);
+            }
+            updatePaperScale();
+        });
+
+        document.addEventListener('DOMContentLoaded', () => {
+            loadState();
+            syncHeaderAndStyleInputs();
+            renderQuestionsEditor();
+            renderExamPaper();
+            setTimeout(updatePaperScale, 120);
+        });
+    </script>
+</body>
+</html>
