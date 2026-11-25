@@ -1,0 +1,1036 @@
+<!DOCTYPE html>
+<html lang="ar" dir="rtl">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>منشئ الأسئلة الامتحانية</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Amiri:wght@400;700&family=Cairo:wght@400;600;700&family=Tajawal:wght@400;500;700&display=swap" rel="stylesheet">
+  <style>
+    :root {
+      --primary: #1d4ed8;
+      --primary-dark: #1e40af;
+      --bg: #f1f5f9;
+      --card: #ffffff;
+      --border: #cbd5e1;
+      --text: #0f172a;
+      --muted: #64748b;
+      --danger: #dc2626;
+      --success: #16a34a;
+      --warn: #d97706;
+    }
+
+    * { box-sizing: border-box; }
+    body {
+      margin: 0;
+      font-family: 'Cairo', sans-serif;
+      background: var(--bg);
+      color: var(--text);
+    }
+
+    /* الشريط العلوي */
+    .topbar {
+      position: sticky;
+      top: 0;
+      z-index: 50;
+      background: #0f172a;
+      color: #fff;
+      padding: 10px 16px;
+      display: flex;
+      flex-wrap: wrap;
+      align-items: center;
+      justify-content: space-between;
+      gap: 10px;
+      box-shadow: 0 2px 8px rgba(0,0,0,0.15);
+    }
+    .topbar h1 {
+      margin: 0;
+      font-size: 1.05rem;
+      display: flex;
+      align-items: center;
+      gap: 8px;
+    }
+    .topbar-actions {
+      display: flex;
+      flex-wrap: wrap;
+      align-items: center;
+      gap: 8px;
+    }
+    .badge {
+      padding: 4px 10px;
+      border-radius: 999px;
+      font-size: 0.82rem;
+      font-weight: 700;
+      background: #334155;
+    }
+    .badge.ok { background: var(--success); }
+    .badge.warn { background: var(--warn); }
+    .badge.err { background: var(--danger); }
+
+    button {
+      font-family: inherit;
+      cursor: pointer;
+      border: none;
+      border-radius: 8px;
+      padding: 7px 12px;
+      font-size: 0.88rem;
+      font-weight: 600;
+      transition: 0.15s;
+    }
+    .btn-primary { background: var(--primary); color: #fff; }
+    .btn-primary:hover { background: var(--primary-dark); }
+    .btn-success { background: var(--success); color: #fff; }
+    .btn-danger { background: #fee2e2; color: var(--danger); }
+    .btn-ghost { background: #e2e8f0; color: var(--text); }
+    .btn-sm { padding: 4px 8px; font-size: 0.8rem; }
+
+    /* أزرار التبديل على الهاتف */
+    .mobile-switch {
+      display: none;
+      background: #fff;
+      border-bottom: 1px solid var(--border);
+      padding: 8px;
+      gap: 8px;
+    }
+    .mobile-switch button {
+      flex: 1;
+      background: #e2e8f0;
+      color: var(--text);
+    }
+    .mobile-switch button.active {
+      background: var(--primary);
+      color: #fff;
+    }
+
+    /* التخطيط الرئيسي */
+    .workspace {
+      display: grid;
+      grid-template-columns: 440px 1fr;
+      min-height: calc(100vh - 56px);
+    }
+
+    /* لوحة التحرير */
+    .editor {
+      background: var(--card);
+      border-left: 1px solid var(--border);
+      display: flex;
+      flex-direction: column;
+      height: calc(100vh - 56px);
+      overflow: hidden;
+    }
+    .tabs {
+      display: flex;
+      border-bottom: 1px solid var(--border);
+      background: #f8fafc;
+    }
+    .tab-btn {
+      flex: 1;
+      border-radius: 0;
+      background: transparent;
+      color: var(--muted);
+      padding: 11px 8px;
+      border-bottom: 3px solid transparent;
+    }
+    .tab-btn.active {
+      color: var(--primary);
+      border-bottom-color: var(--primary);
+      background: #fff;
+    }
+    .tab-content {
+      flex: 1;
+      overflow-y: auto;
+      padding: 14px;
+      display: none;
+    }
+    .tab-content.active { display: block; }
+
+    /* شريط الرموز العلمية */
+    .symbols-bar {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 4px;
+      padding: 8px;
+      background: #f8fafc;
+      border: 1px solid var(--border);
+      border-radius: 8px;
+      margin-bottom: 12px;
+      align-items: center;
+    }
+    .symbols-bar span {
+      font-size: 0.78rem;
+      color: var(--muted);
+      margin-left: 4px;
+    }
+    .sym-btn {
+      background: #fff;
+      border: 1px solid var(--border);
+      padding: 3px 8px;
+      font-size: 0.9rem;
+      border-radius: 6px;
+    }
+    .sym-btn:hover { background: #eff6ff; border-color: var(--primary); }
+
+    /* الحقول */
+    .field { margin-bottom: 10px; }
+    .field label {
+      display: block;
+      font-size: 0.82rem;
+      font-weight: 600;
+      margin-bottom: 4px;
+      color: #334155;
+    }
+    .grid-2 {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 8px;
+    }
+    input[type="text"], input[type="number"], select, textarea {
+      width: 100%;
+      padding: 8px 10px;
+      border: 1px solid var(--border);
+      border-radius: 8px;
+      font-family: inherit;
+      font-size: 0.9rem;
+      background: #fff;
+    }
+    textarea { resize: vertical; min-height: 60px; }
+    input:focus, textarea:focus, select:focus {
+      outline: none;
+      border-color: var(--primary);
+      box-shadow: 0 0 0 2px rgba(29, 78, 216, 0.12);
+    }
+
+    /* بطاقة السؤال */
+    .q-card {
+      border: 1px solid var(--border);
+      border-radius: 10px;
+      padding: 12px;
+      margin-bottom: 12px;
+      background: #f8fafc;
+    }
+    .q-card-header {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 6px;
+      margin-bottom: 10px;
+    }
+    .q-title-tag {
+      font-weight: 700;
+      color: var(--primary);
+      font-size: 0.95rem;
+    }
+    .sub-item {
+      display: flex;
+      gap: 6px;
+      align-items: center;
+      margin-bottom: 6px;
+    }
+    .sub-item input[type="text"] { flex: 1; }
+    .sub-item input[type="number"] { width: 72px; }
+
+    /* منطقة معاينة A4 */
+    .preview-pane {
+      padding: 20px;
+      overflow: auto;
+      display: flex;
+      justify-content: center;
+      align-items: flex-start;
+      background: #cbd5e1;
+    }
+    .paper {
+      width: 210mm;
+      min-height: 297mm;
+      background: #fff;
+      color: #000;
+      padding: 14mm 16mm;
+      box-shadow: 0 8px 24px rgba(0,0,0,0.18);
+      position: relative;
+      display: flex;
+      flex-direction: column;
+    }
+    .paper-frame {
+      flex: 1;
+      display: flex;
+      flex-direction: column;
+    }
+    .frame-single .paper-frame {
+      border: 2px solid #000;
+      padding: 10mm;
+    }
+    .frame-double .paper-frame {
+      border: 4px double #000;
+      padding: 10mm;
+    }
+    .frame-none .paper-frame {
+      border: none;
+      padding: 0;
+    }
+
+    /* الكليشة */
+    .exam-header {
+      display: grid;
+      grid-template-columns: 1fr auto 1fr;
+      align-items: center;
+      gap: 10px;
+      border-bottom: 2px solid #000;
+      padding-bottom: 10px;
+      margin-bottom: 12px;
+      font-size: 14px;
+      line-height: 1.7;
+    }
+    .header-right { text-align: right; font-weight: 700; }
+    .header-center { text-align: center; }
+    .header-left { text-align: left; font-weight: 700; }
+    .header-logo {
+      max-height: 70px;
+      max-width: 90px;
+      object-fit: contain;
+      display: block;
+      margin: 0 auto 4px;
+    }
+    .exam-notice {
+      text-align: center;
+      font-weight: 700;
+      font-size: 14px;
+      padding: 5px 10px;
+      border: 1px dashed #333;
+      border-radius: 6px;
+      margin-bottom: 14px;
+      background: #fafafa;
+    }
+
+    /* الأسئلة في الورقة */
+    .exam-body { flex: 1; }
+    .exam-q {
+      margin-bottom: 14px;
+      page-break-inside: avoid;
+    }
+    .exam-q-head {
+      display: flex;
+      justify-content: space-between;
+      align-items: baseline;
+      gap: 10px;
+      font-weight: 700;
+      font-size: 15.5px;
+      margin-bottom: 4px;
+    }
+    .exam-q-marks {
+      white-space: nowrap;
+      font-size: 13.5px;
+      border: 1px solid #000;
+      padding: 1px 8px;
+      border-radius: 4px;
+    }
+    .exam-q-note {
+      font-size: 13px;
+      font-style: italic;
+      margin-bottom: 4px;
+      color: #222;
+    }
+    .exam-q-img {
+      max-width: 75%;
+      max-height: 180px;
+      display: block;
+      margin: 8px auto;
+      border-radius: 4px;
+    }
+    .exam-branches {
+      list-style: none;
+      padding: 0 18px 0 0;
+      margin: 4px 0 0;
+    }
+    .exam-branches li {
+      display: flex;
+      justify-content: space-between;
+      gap: 10px;
+      margin-bottom: 5px;
+      font-size: 14.5px;
+      line-height: 1.6;
+    }
+    .exam-mcq {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 6px 16px;
+      padding: 6px 20px 0 0;
+      font-size: 14.5px;
+    }
+    .exam-tf {
+      list-style: none;
+      padding: 0 18px 0 0;
+      margin: 6px 0 0;
+    }
+    .exam-tf li {
+      margin-bottom: 5px;
+      font-size: 14.5px;
+    }
+
+    /* التذييل */
+    .exam-footer {
+      margin-top: 20px;
+      padding-top: 10px;
+      border-top: 1.5px solid #000;
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      font-weight: 700;
+      font-size: 14px;
+    }
+
+    /* استجابة الهاتف */
+    @media (max-width: 960px) {
+      .mobile-switch { display: flex; }
+      .workspace { grid-template-columns: 1fr; display: block; }
+      .editor { height: auto; min-height: calc(100vh - 110px); border-left: none; }
+      .preview-pane { padding: 10px; display: none; }
+      .workspace.show-preview .editor { display: none; }
+      .workspace.show-preview .preview-pane { display: flex; }
+      .paper {
+        width: 100%;
+        min-height: auto;
+        padding: 12px;
+      }
+      .frame-single .paper-frame, .frame-double .paper-frame { padding: 10px; }
+      .exam-header { font-size: 12px; }
+    }
+
+    /* إعدادات الطباعة A4 */
+    @media print {
+      @page { size: A4 portrait; margin: 8mm; }
+      body { background: #fff !important; }
+      .topbar, .mobile-switch, .editor { display: none !important; }
+      .workspace { display: block !important; }
+      .preview-pane {
+        display: block !important;
+        padding: 0 !important;
+        background: #fff !important;
+      }
+      .paper {
+        width: 100% !important;
+        min-height: 280mm !important;
+        padding: 0 !important;
+        box-shadow: none !important;
+        margin: 0 !important;
+      }
+    }
+  </style>
+</head>
+<body>
+
+  <header class="topbar">
+    <h1>📝 منشئ الأسئلة الامتحانية</h1>
+    <div class="topbar-actions">
+      <span id="marksBadge" class="badge">الدرجات: 0 / 100</span>
+      <button class="btn-success" onclick="window.print()">🖨️ طباعة / حفظ PDF</button>
+      <button class="btn-ghost btn-sm" onclick="resetDemo()">↺ إعادة ضبط</button>
+    </div>
+  </header>
+
+  <div class="mobile-switch">
+    <button id="btnShowEditor" class="active" onclick="toggleMobileView('editor')">✏️ التحرير</button>
+    <button id="btnShowPreview" onclick="toggleMobileView('preview')">📄 معاينة الورقة</button>
+  </div>
+
+  <main id="workspace" class="workspace">
+    <!-- لوحة التحرير -->
+    <aside class="editor">
+      <div class="tabs">
+        <button class="tab-btn active" onclick="openTab('tab-questions', this)">الأسئلة</button>
+        <button class="tab-btn" onclick="openTab('tab-header', this)">الكليشة والتذييل</button>
+        <button class="tab-btn" onclick="openTab('tab-style', this)">التنسيق</button>
+      </div>
+
+      <!-- تبويب الأسئلة -->
+      <div id="tab-questions" class="tab-content active">
+        <div class="symbols-bar">
+          <span>رموز:</span>
+          <button type="button" class="sym-btn" onclick="insertSym('×')">×</button>
+          <button type="button" class="sym-btn" onclick="insertSym('÷')">÷</button>
+          <button type="button" class="sym-btn" onclick="insertSym('±')">±</button>
+          <button type="button" class="sym-btn" onclick="insertSym('√')">√</button>
+          <button type="button" class="sym-btn" onclick="insertSym('²')">²</button>
+          <button type="button" class="sym-btn" onclick="insertSym('³')">³</button>
+          <button type="button" class="sym-btn" onclick="insertSym('π')">π</button>
+          <button type="button" class="sym-btn" onclick="insertSym('°')">°</button>
+          <button type="button" class="sym-btn" onclick="insertSym('≤')">≤</button>
+          <button type="button" class="sym-btn" onclick="insertSym('≥')">≥</button>
+          <button type="button" class="sym-btn" onclick="insertSym('≠')">≠</button>
+          <button type="button" class="sym-btn" onclick="insertSym('→')">→</button>
+          <button type="button" class="sym-btn" onclick="insertSym('⇌')">⇌</button>
+        </div>
+
+        <div id="questionsList"></div>
+
+        <div style="display:flex; flex-wrap:wrap; gap:6px; margin-top:10px;">
+          <button class="btn-primary" onclick="addQuestion('essay')">+ سؤال مقالي</button>
+          <button class="btn-primary" onclick="addQuestion('branches')">+ سؤال بفروع</button>
+          <button class="btn-primary" onclick="addQuestion('mcq')">+ اختيارات</button>
+          <button class="btn-primary" onclick="addQuestion('tf')">+ صح وخطأ</button>
+        </div>
+      </div>
+
+      <!-- تبويب الكليشة والتذييل -->
+      <div id="tab-header" class="tab-content">
+        <div class="field">
+          <label>الوزارة / المؤسسة</label>
+          <input type="text" id="h_ministry" oninput="updateHeader('ministry', this.value)">
+        </div>
+        <div class="field">
+          <label>المديرية / الجامعة</label>
+          <input type="text" id="h_directorate" oninput="updateHeader('directorate', this.value)">
+        </div>
+        <div class="field">
+          <label>المدرسة / الكلية</label>
+          <input type="text" id="h_school" oninput="updateHeader('school', this.value)">
+        </div>
+        <div class="grid-2">
+          <div class="field">
+            <label>المادة</label>
+            <input type="text" id="h_subject" oninput="updateHeader('subject', this.value)">
+          </div>
+          <div class="field">
+            <label>الصف / المرحلة</label>
+            <input type="text" id="h_grade" oninput="updateHeader('grade', this.value)">
+          </div>
+        </div>
+        <div class="grid-2">
+          <div class="field">
+            <label>الوقت</label>
+            <input type="text" id="h_time" oninput="updateHeader('time', this.value)">
+          </div>
+          <div class="field">
+            <label>التاريخ</label>
+            <input type="text" id="h_date" oninput="updateHeader('date', this.value)">
+          </div>
+        </div>
+        <div class="grid-2">
+          <div class="field">
+            <label>الدور / الفصل</label>
+            <input type="text" id="h_term" oninput="updateHeader('term', this.value)">
+          </div>
+          <div class="field">
+            <label>الدرجة النهائية</label>
+            <input type="number" id="h_totalMarks" oninput="updateHeader('totalMarks', Number(this.value) || 0)">
+          </div>
+        </div>
+        <div class="field">
+          <label>ملاحظة عامة أعلى الورقة</label>
+          <input type="text" id="h_notice" oninput="updateHeader('notice', this.value)">
+        </div>
+        <div class="field">
+          <label>شعار المؤسسة (اختياري)</label>
+          <input type="file" accept="image/*" onchange="uploadLogo(this)">
+          <button type="button" class="btn-danger btn-sm" style="margin-top:6px;" onclick="removeLogo()">إزالة الشعار</button>
+        </div>
+        <hr style="border:none; border-top:1px solid var(--border); margin:14px 0;">
+        <div class="field">
+          <label>عبارة التذييل</label>
+          <input type="text" id="f_wish" oninput="updateFooter('wish', this.value)">
+        </div>
+        <div class="field">
+          <label>اسم المدرس / الأستاذ</label>
+          <input type="text" id="f_teacher" oninput="updateFooter('teacher', this.value)">
+        </div>
+      </div>
+
+      <!-- تبويب التنسيق -->
+      <div id="tab-style" class="tab-content">
+        <div class="field">
+          <label>نوع الخط</label>
+          <select id="s_font" onchange="updateStyle('font', this.value)">
+            <option value="'Cairo', sans-serif">Cairo (عصري وواضح)</option>
+            <option value="'Amiri', serif">Amiri (نسخ رسمي كلاسيكي)</option>
+            <option value="'Tajawal', sans-serif">Tajawal (ناعم ومرتب)</option>
+          </select>
+        </div>
+        <div class="field">
+          <label>إطار ورقة الامتحان</label>
+          <select id="s_border" onchange="updateStyle('border', this.value)">
+            <option value="frame-double">إطار مزدوج رسمي</option>
+            <option value="frame-single">إطار مفرد</option>
+            <option value="frame-none">بدون إطار</option>
+          </select>
+        </div>
+        <div class="field">
+          <label style="display:flex; align-items:center; gap:8px; cursor:pointer;">
+            <input type="checkbox" id="s_indianNums" onchange="updateStyle('indianNums', this.checked)">
+            استخدام الأرقام العربية الشرقية (١، ٢، ٣)
+          </label>
+        </div>
+      </div>
+    </aside>
+
+    <!-- معاينة ورقة A4 -->
+    <section class="preview-pane">
+      <div id="paper" class="paper frame-double">
+        <div class="paper-frame" id="paperContent"></div>
+      </div>
+    </section>
+  </main>
+
+  <script>
+    const STORAGE_KEY = 'arabic_exam_builder_v1';
+    const AR_LETTERS = ['أ', 'ب', 'ج', 'د', 'هـ', 'و', 'ز', 'ح'];
+    let lastFocused = null;
+
+    const defaultState = {
+      header: {
+        ministry: 'وزارة التربية',
+        directorate: 'المديرية العامة للتربية',
+        school: 'ثانوية التفوق للبنين',
+        subject: 'العلوم / الفيزياء',
+        grade: 'الصف الثالث المتوسط',
+        time: 'ساعتان',
+        date: '2026 / 5 / 15',
+        term: 'امتحان نهاية السنة - الدور الأول',
+        totalMarks: 100,
+        notice: 'ملاحظة: أجب عن جميع الأسئلة الآتية ولكل سؤال درجته المؤشرة إزاءه.',
+        logo: ''
+      },
+      footer: {
+        wish: 'مع تمنياتنا لكم بالنجاح والتوفيق',
+        teacher: 'مدرس المادة: .................'
+      },
+      style: {
+        font: "'Cairo', sans-serif",
+        border: 'frame-double',
+        indianNums: true
+      },
+      questions: [
+        {
+          id: 1,
+          type: 'essay',
+          text: 'عرّف كلاً من: (1) التيار الكهربائي، (2) المقاومة الكهربائية، مع ذكر وحدة قياس كل منهما.',
+          marks: 25,
+          note: '',
+          image: '',
+          branches: [],
+          options: [],
+          tfItems: []
+        },
+        {
+          id: 2,
+          type: 'branches',
+          text: 'أجب عن فرعين مما يأتي:',
+          marks: 30,
+          note: '(لكل فرع 15 درجة)',
+          image: '',
+          branches: [
+            { text: 'ما الفرق بين ربط المصابيح على التوالي وربطها على التوازي؟', marks: 15 },
+            { text: 'مقاومتان (4Ω , 6Ω) ربطتا على التوالي مع مصدر فرق جهده 20V، احسب التيار الكلي.', marks: 15 },
+            { text: 'علل: تُصنع أسلاك التوصيل الكهربائية من النحاس غالباً.', marks: 15 }
+          ],
+          options: [],
+          tfItems: []
+        },
+        {
+          id: 3,
+          type: 'mcq',
+          text: 'اختر الإجابة الصحيحة مما بين الأقواس: وحدة قياس القدرة الكهربائية هي:',
+          marks: 20,
+          note: '',
+          image: '',
+          branches: [],
+          options: ['الفولت (V)', 'الأمبير (A)', 'الواط (W)', 'الأوم (Ω)'],
+          tfItems: []
+        },
+        {
+          id: 4,
+          type: 'tf',
+          text: 'ضع علامة (✓) أمام العبارة الصحيحة وعلامة (✗) أمام العبارة الخاطئة:',
+          marks: 25,
+          note: '',
+          image: '',
+          branches: [],
+          options: [],
+          tfItems: [
+            'يُربط جهاز الأميتر على التوالي في الدائرة الكهربائية لقياس التيار.',
+            'يزداد مقدار المقاومة الكهربائية للسلك بزيادة مساحة مقطعه العرضي.'
+          ]
+        }
+      ]
+    };
+
+    let state = loadState();
+
+    function loadState() {
+      try {
+        const saved = localStorage.getItem(STORAGE_KEY);
+        if (saved) return JSON.parse(saved);
+      } catch (e) {}
+      return JSON.parse(JSON.stringify(defaultState));
+    }
+
+    function saveState() {
+      try {
+        localStorage.setItem(STORAGE_KEY, JSON.stringify(state));
+      } catch (e) {}
+    }
+
+    function resetDemo() {
+      if (confirm('هل تريد إعادة ضبط الورقة إلى النموذج الافتراضي؟')) {
+        state = JSON.parse(JSON.stringify(defaultState));
+        saveState();
+        syncControls();
+        renderEditor();
+        renderPreview();
+      }
+    }
+
+    function toNum(val) {
+      const s = String(val ?? '');
+      if (!state.style.indianNums) return s;
+      return s.replace(/\d/g, d => '٠١٢٣٤٥٦٧٨٩'[d]);
+    }
+
+    function esc(str) {
+      return String(str ?? '')
+        .replace(/&/g, '&amp;')
+        .replace(/</g, '&lt;')
+        .replace(/>/g, '&gt;')
+        .replace(/"/g, '&quot;')
+        .replace(/\n/g, '<br>');
+    }
+
+    document.addEventListener('focusin', (e) => {
+      if (e.target.tagName === 'TEXTAREA' || (e.target.tagName === 'INPUT' && e.target.type === 'text')) {
+        lastFocused = e.target;
+      }
+    });
+
+    function insertSym(sym) {
+      if (!lastFocused) return;
+      const start = lastFocused.selectionStart ?? lastFocused.value.length;
+      const end = lastFocused.selectionEnd ?? lastFocused.value.length;
+      const val = lastFocused.value;
+      lastFocused.value = val.slice(0, start) + sym + val.slice(end);
+      lastFocused.focus();
+      lastFocused.selectionStart = lastFocused.selectionEnd = start + sym.length;
+      lastFocused.dispatchEvent(new Event('input', { bubbles: true }));
+    }
+
+    function openTab(id, btn) {
+      document.querySelectorAll('.tab-content').forEach(el => el.classList.remove('active'));
+      document.querySelectorAll('.tab-btn').forEach(el => el.classList.remove('active'));
+      document.getElementById(id).classList.add('active');
+      btn.classList.add('active');
+    }
+
+    function toggleMobileView(mode) {
+      const ws = document.getElementById('workspace');
+      const bEd = document.getElementById('btnShowEditor');
+      const bPr = document.getElementById('btnShowPreview');
+      if (mode === 'preview') {
+        ws.classList.add('show-preview');
+        bPr.classList.add('active');
+        bEd.classList.remove('active');
+      } else {
+        ws.classList.remove('show-preview');
+        bEd.classList.add('active');
+        bPr.classList.remove('active');
+      }
+    }
+
+    function syncControls() {
+      const h = state.header;
+      document.getElementById('h_ministry').value = h.ministry;
+      document.getElementById('h_directorate').value = h.directorate;
+      document.getElementById('h_school').value = h.school;
+      document.getElementById('h_subject').value = h.subject;
+      document.getElementById('h_grade').value = h.grade;
+      document.getElementById('h_time').value = h.time;
+      document.getElementById('h_date').value = h.date;
+      document.getElementById('h_term').value = h.term;
+      document.getElementById('h_totalMarks').value = h.totalMarks;
+      document.getElementById('h_notice').value = h.notice;
+
+      document.getElementById('f_wish').value = state.footer.wish;
+      document.getElementById('f_teacher').value = state.footer.teacher;
+
+      document.getElementById('s_font').value = state.style.font;
+      document.getElementById('s_border').value = state.style.border;
+      document.getElementById('s_indianNums').checked = state.style.indianNums;
+    }
+
+    function updateHeader(key, val) {
+      state.header[key] = val;
+      saveState();
+      renderPreview();
+    }
+
+    function updateFooter(key, val) {
+      state.footer[key] = val;
+      saveState();
+      renderPreview();
+    }
+
+    function updateStyle(key, val) {
+      state.style[key] = val;
+      saveState();
+      renderPreview();
+    }
+
+    function uploadLogo(input) {
+      const file = input.files[0];
+      if (!file) return;
+      const reader = new FileReader();
+      reader.onload = () => {
+        state.header.logo = reader.result;
+        saveState();
+        renderPreview();
+      };
+      reader.readAsDataURL(file);
+    }
+
+    function removeLogo() {
+      state.header.logo = '';
+      saveState();
+      renderPreview();
+    }
+
+    function addQuestion(type) {
+      const q = {
+        id: Date.now(),
+        type,
+        text: type === 'branches' ? 'أجب عن الفروع الآتية:' :
+              type === 'mcq' ? 'اختر الإجابة الصحيحة:' :
+              type === 'tf' ? 'ضع علامة (✓) أو (✗) أمام العبارات الآتية:' : '',
+        marks: 20,
+        note: '',
+        image: '',
+        branches: type === 'branches' ? [{ text: '', marks: 10 }, { text: '', marks: 10 }] : [],
+        options: type === 'mcq' ? ['', '', '', ''] : [],
+        tfItems: type === 'tf' ? ['', ''] : []
+      };
+      state.questions.push(q);
+      saveState();
+      renderEditor();
+      renderPreview();
+    }
+
+    function deleteQuestion(idx) {
+      state.questions.splice(idx, 1);
+      saveState();
+      renderEditor();
+      renderPreview();
+    }
+
+    function moveQuestion(idx, dir) {
+      const target = idx + dir;
+      if (target < 0 || target >= state.questions.length) return;
+      const tmp = state.questions[idx];
+      state.questions[idx] = state.questions[target];
+      state.questions[target] = tmp;
+      saveState();
+      renderEditor();
+      renderPreview();
+    }
+
+    function updateQField(idx, key, val) {
+      state.questions[idx][key] = val;
+      saveState();
+      renderPreview();
+    }
+
+    function uploadQImage(idx, input) {
+      const file = input.files[0];
+      if (!file) return;
+      const reader = new FileReader();
+      reader.onload = () => {
+        state.questions[idx].image = reader.result;
+        saveState();
+        renderEditor();
+        renderPreview();
+      };
+      reader.readAsDataURL(file);
+    }
+
+    function removeQImage(idx) {
+      state.questions[idx].image = '';
+      saveState();
+      renderEditor();
+      renderPreview();
+    }
+
+    function addSubItem(idx, kind) {
+      if (kind === 'branches') state.questions[idx].branches.push({ text: '', marks: 5 });
+      if (kind === 'options') state.questions[idx].options.push('');
+      if (kind === 'tfItems') state.questions[idx].tfItems.push('');
+      saveState();
+      renderEditor();
+      renderPreview();
+    }
+
+    function removeSubItem(idx, kind, sIdx) {
+      state.questions[idx][kind].splice(sIdx, 1);
+      saveState();
+      renderEditor();
+      renderPreview();
+    }
+
+    function updateSubItem(idx, kind, sIdx, key, val) {
+      if (kind === 'branches') {
+        state.questions[idx].branches[sIdx][key] = val;
+      } else {
+        state.questions[idx][kind][sIdx] = val;
+      }
+      saveState();
+      renderPreview();
+    }
+
+    function renderEditor() {
+      const container = document.getElementById('questionsList');
+      container.innerHTML = '';
+
+      state.questions.forEach((q, idx) => {
+        const card = document.createElement('div');
+        card.className = 'q-card';
+
+        let subHtml = '';
+        if (q.type === 'branches') {
+          subHtml = `<div class="field"><label>الفروع (أ، ب، ج...)</label>`;
+          q.branches.forEach((b, sIdx) => {
+            subHtml += `
+              <div class="sub-item">
+                <span>${AR_LETTERS[sIdx] || sIdx + 1}-</span>
+                <input type="text" placeholder="نص الفرع..." value="${esc(b.text)}" oninput="updateSubItem(${idx},'branches',${sIdx},'text',this.value)">
+                <input type="number" placeholder="درجة" value="${b.marks}" oninput="updateSubItem(${idx},'branches',${sIdx},'marks',Number(this.value)||0)">
+                <button type="button" class="btn-danger btn-sm" onclick="removeSubItem(${idx},'branches',${sIdx})">✕</button>
+              </div>`;
+          });
+          subHtml += `<button type="button" class="btn-ghost btn-sm" onclick="addSubItem(${idx},'branches')">+ إضافة فرع</button></div>`;
+        } else if (q.type === 'mcq') {
+          subHtml = `<div class="field"><label>الاختيارات</label>`;
+          q.options.forEach((opt, sIdx) => {
+            subHtml += `
+              <div class="sub-item">
+                <span>${AR_LETTERS[sIdx] || sIdx + 1}-</span>
+                <input type="text" placeholder="الاختيار..." value="${esc(opt)}" oninput="updateSubItem(${idx},'options',${sIdx},null,this.value)">
+                <button type="button" class="btn-danger btn-sm" onclick="removeSubItem(${idx},'options',${sIdx})">✕</button>
+              </div>`;
+          });
+          subHtml += `<button type="button" class="btn-ghost btn-sm" onclick="addSubItem(${idx},'options')">+ إضافة خيار</button></div>`;
+        } else if (q.type === 'tf') {
+          subHtml = `<div class="field"><label>فقرات الصح والخطأ</label>`;
+          q.tfItems.forEach((item, sIdx) => {
+            subHtml += `
+              <div class="sub-item">
+                <span>${sIdx + 1}-</span>
+                <input type="text" placeholder="اكتب العبارة..." value="${esc(item)}" oninput="updateSubItem(${idx},'tfItems',${sIdx},null,this.value)">
+                <button type="button" class="btn-danger btn-sm" onclick="removeSubItem(${idx},'tfItems',${sIdx})">✕</button>
+              </div>`;
+          });
+          subHtml += `<button type="button" class="btn-ghost btn-sm" onclick="addSubItem(${idx},'tfItems')">+ إضافة فقرة</button></div>`;
+        }
+
+        card.innerHTML = `
+          <div class="q-card-header">
+            <span class="q-title-tag">سؤال ${idx + 1}</span>
+            <div style="display:flex; gap:4px;">
+              <button type="button" class="btn-ghost btn-sm" onclick="moveQuestion(${idx}, -1)">↑</button>
+              <button type="button" class="btn-ghost btn-sm" onclick="moveQuestion(${idx}, 1)">↓</button>
+              <button type="button" class="btn-danger btn-sm" onclick="deleteQuestion(${idx})">حذف</button>
+            </div>
+          </div>
+          <div class="field">
+            <label>نص السؤال</label>
+            <textarea placeholder="اكتب نص السؤال هنا..." oninput="updateQField(${idx},'text',this.value)">${esc(q.text).replace(/<br>/g, '\n')}</textarea>
+          </div>
+          <div class="grid-2">
+            <div class="field">
+              <label>درجة السؤال</label>
+              <input type="number" value="${q.marks}" oninput="updateQField(${idx},'marks',Number(this.value)||0)">
+            </div>
+            <div class="field">
+              <label>ملاحظة (اختياري)</label>
+              <input type="text" placeholder="مثلاً: ترك فرع" value="${esc(q.note)}" oninput="updateQField(${idx},'note',this.value)">
+            </div>
+          </div>
+          ${subHtml}
+          <div class="field" style="margin-top:8px;">
+            <label>صورة توضيحية للسؤال (اختياري)</label>
+            <input type="file" accept="image/*" onchange="uploadQImage(${idx}, this)">
+            ${q.image ? `<button type="button" class="btn-danger btn-sm" style="margin-top:4px;" onclick="removeQImage(${idx})">حذف الصورة</button>` : ''}
+          </div>
+        `;
+        container.appendChild(card);
+      });
+    }
+
+    function renderPreview() {
+      const paper = document.getElementById('paper');
+      paper.style.fontFamily = state.style.font;
+      paper.className = 'paper ' + state.style.border;
+
+      const h = state.header;
+      const totalAdded = state.questions.reduce((acc, q) => acc + (Number(q.marks) || 0), 0);
+      const badge = document.getElementById('marksBadge');
+      badge.textContent = `الدرجات: ${toNum(totalAdded)} / ${toNum(h.totalMarks)}`;
+      badge.className = 'badge ' + (totalAdded === h.totalMarks ? 'ok' : totalAdded > h.totalMarks ? 'err' : 'warn');
+
+      let qHtml = '';
+      state.questions.forEach((q, idx) => {
+        let extra = '';
+        if (q.image) {
+          extra += `<img src="${q.image}" class="exam-q-img" alt="صورة السؤال">`;
+        }
+        if (q.type === 'branches' && q.branches.length) {
+          extra += `<ul class="exam-branches">` + q.branches.map((b, i) => `
+            <li>
+              <span><strong>${AR_LETTERS[i] || toNum(i + 1)}-</strong> ${esc(toNum(b.text))}</span>
+              ${b.marks ? `<span style="white-space:nowrap;">(${toNum(b.marks)} د)</span>` : ''}
+            </li>`).join('') + `</ul>`;
+        } else if (q.type === 'mcq' && q.options.length) {
+          extra += `<div class="exam-mcq">` + q.options.map((opt, i) => `
+            <div><strong>${AR_LETTERS[i] || toNum(i + 1)}-</strong> ${esc(toNum(opt))}</div>`).join('') + `</div>`;
+        } else if (q.type === 'tf' && q.tfItems.length) {
+          extra += `<ul class="exam-tf">` + q.tfItems.map((it, i) => `
+            <li><strong>${toNum(i + 1)}-</strong> ${esc(toNum(it))} &nbsp; ( &nbsp;&nbsp;&nbsp;&nbsp; )</li>`).join('') + `</ul>`;
+        }
+
+        qHtml += `
+          <div class="exam-q">
+            <div class="exam-q-head">
+              <div>س${toNum(idx + 1)}/ ${esc(toNum(q.text))}</div>
+              <div class="exam-q-marks">${toNum(q.marks)} درجة</div>
+            </div>
+            ${q.note ? `<div class="exam-q-note">${esc(toNum(q.note))}</div>` : ''}
+            ${extra}
+          </div>`;
+      });
+
+      document.getElementById('paperContent').innerHTML = `
+        <div class="exam-header">
+          <div class="header-right">
+            <div>${esc(toNum(h.ministry))}</div>
+            <div>${esc(toNum(h.directorate))}</div>
+            <div>${esc(toNum(h.school))}</div>
+          </div>
+          <div class="header-center">
+            ${h.logo ? `<img src="${h.logo}" class="header-logo" alt="شعار">` : ''}
+            <div style="font-weight:700; font-size:15px;">${esc(toNum(h.term))}</div>
+            <div>الدرجة الكلية: ${toNum(h.totalMarks)}</div>
+          </div>
+          <div class="header-left">
+            <div>المادة: ${esc(toNum(h.subject))}</div>
+            <div>الصف: ${esc(toNum(h.grade))}</div>
+            <div>الوقت: ${esc(toNum(h.time))}</div>
+            <div>التاريخ: ${esc(toNum(h.date))}</div>
+          </div>
+        </div>
+        ${h.notice ? `<div class="exam-notice">${esc(toNum(h.notice))}</div>` : ''}
+        <div class="exam-body">${qHtml}</div>
+        <div class="exam-footer">
+          <div>${esc(toNum(state.footer.wish))}</div>
+          <div>${esc(toNum(state.footer.teacher))}</div>
+        </div>
+      `;
+    }
+
+    syncControls();
+    renderEditor();
+    renderPreview();
+  </script>
+</body>
+</html>
